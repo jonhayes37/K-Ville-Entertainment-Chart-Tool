@@ -34,10 +34,13 @@ public class ChartSong implements Comparable<ChartSong>{
 	}
 	
 	public boolean isEqual(ChartSong cs2){
-		return (this.artistName.equals(cs2.artistName) && this.songName.equals(cs2.songName) && this.points == cs2.points) ? true : false;
+		return (this.artistName.equals(cs2.artistName) && this.songName.equals(cs2.songName)) ? true : false;
 	}
 
 	public String getSongName(){ return this.songName; }
 	public String getArtistName(){ return this.artistName; }
 	public int getPoints(){ return this.points; }
+	public void setSongName(String name){ this.songName = name; }
+	public void setArtistName(String name){ this.artistName = name; }
+	public void setPoints(int pts){ this.points = pts; }
 }
