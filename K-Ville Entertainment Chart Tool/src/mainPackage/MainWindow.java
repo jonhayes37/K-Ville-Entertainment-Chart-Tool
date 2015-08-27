@@ -37,12 +37,16 @@ import com.google.common.collect.Lists;
 /*
  * TODO:
  * - Expand first 100 to as many comments as needed
- * - Develop algorithm to parse comments
+ * - Improve algorithm to parse comments
  * - determine if replies are being included
  * 
- * - Detect flipped songs / artists?
- * - track duplicate songs in a comment
- * - add processing label to show progress
+ * - DONE add array of strings to try processing line split with ("by", "/", etc) if "-" split fails
+ * - DONE add successful lines, only exclude failed ones and indicate it in failed txt file
+ * - DONE track duplicate songs in a comment
+ * - DONE flipped artists
+ * - DONE Exception for teen top
+ * - TODO Add exception for "one. song - artist" (array of words numbers, check those in song parse
+ * - algorithm to identify one character off / very similar entries (girls' vs girls, girls generation vs snsd) -> if one of the entries matches and the otehr is close (function determines closeness)
  */
 
 public class MainWindow extends JFrame implements ActionListener{
@@ -64,10 +68,11 @@ public class MainWindow extends JFrame implements ActionListener{
 	private Chart chart;
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private static final String VERSION_NUMBER = "0.1";
+	private static final String VERSION_NUMBER = "0.7";
+	private final String[] splitters = new String[]{"-","by","/","~"};
 	private final String[] titles = new String[]{"Video URL","Save Directory"};
 	private String artistChars = " ;,?";
-	private String songChars = " 1023456789.);?,";
+	private String songChars = " -1023456789.);?,";
 	
 	// Window Creation
 	public MainWindow(){
@@ -157,6 +162,8 @@ public class MainWindow extends JFrame implements ActionListener{
 		System.out.println("Fetched comments successfully");
 		ProcessComments(commentList);
 		System.out.println("Parsed comments successfully");
+		chart.ProcessChart();
+		System.out.println("Processed chart successfully");
 		chart.CreateChart();
 		System.out.println("Saved chart successfully");
 		/*try{
@@ -177,67 +184,59 @@ public class MainWindow extends JFrame implements ActionListener{
 	private void ProcessComments(ArrayList<String> comments){
 		for (int i = 0; i < comments.size(); i++){
 			String comment = comments.get(i);
-			boolean success = ProcessComment(comment.split("\n"));
-			if (success){	// Adds all temporary ChartSong's to the Chart, resets temporary cache
-				for (int j = 0; j < tempSongs.size(); j++){
-					tempSongs.get(j).setArtistName(tempSongs.get(j).getArtistName().toLowerCase());
-					tempSongs.get(j).setSongName(tempSongs.get(j).getSongName().toLowerCase());
-					chart.AddValue(tempSongs.get(j));
-				}
-			}else{			// Parse failed
-				chart.AddFailedParse(comment);
+			ArrayList<Integer> success = ProcessComment(comment.split("\n"));
+			
+			CheckForDuplicates();
+			for (int j = 0; j < tempSongs.size(); j++){
+				tempSongs.get(j).setArtistName(tempSongs.get(j).getArtistName().toLowerCase());
+				tempSongs.get(j).setSongName(tempSongs.get(j).getSongName().toLowerCase());
+				chart.AddValue(tempSongs.get(j));
+			}
+			if (success.size() > 0){	// If lines failed
+				chart.AddFailedParse(comment, success);
 			}
 		}
 	}
 	
-	// Returns false if it fails parse
-	private boolean ProcessComment(String[] comment){
+	// Returns -1 for a success, line number for failure if it failed
+	private ArrayList<Integer> ProcessComment(String[] comment){
 		tempSongs = new ArrayList<ChartSong>();
+		ArrayList<Integer> failedLines = new ArrayList<Integer>();
 		String[] lines = comment;
 		lines[lines.length - 1] = lines[lines.length - 1].substring(0, lines[lines.length - 1].length() - 1);	// Removes "?" at the end of each comment
 		System.out.println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 		System.out.println("Number of lines: " + lines.length);
-		if (lines.length < 10){			// Process not enough songs here -> process as if splitting 55 points among number of songs (6 each)
+		if (lines.length < 10 || lines.length > 10){			// Process improper formatting here
 			int successfulLines = 0;
 			for (int j = 0; j < lines.length; j++){
-				boolean success = ProcessLine(lines[j], successfulLines);
-				if (success){
+				boolean success = ProcessLine(lines[j], successfulLines, 0);
+				if (!success){
+					failedLines.add(j);
+				}else{
 					successfulLines++;
 				}
 			}
-			if (successfulLines == 0){
-				return false;
-			}else{
-				return true;
-			}
-		}else if (lines.length == 10){	// Process correct number of songs here
+			return failedLines;
+		}else{	// Process correct formatting (10 lines)
 			for (int j = 0; j < lines.length; j++){
-				boolean success = ProcessLine(lines[j], j);
+				boolean success = ProcessLine(lines[j], j, 0);
 				if (!success){
-					return false;
+					failedLines.add(j);
 				}
 			}
-			return true;
-		}else{							// Process too many lines here (likely a list + comment) -> Try reproccesing with first ten, last ten lines
-			String[] firstTenLines = Arrays.copyOfRange(lines, 0, 10);
-			String[] lastTenLines = Arrays.copyOfRange(lines, lines.length - 10, lines.length);
-			if (ProcessComment(firstTenLines)){
-				return true;
-			}else if (ProcessComment(lastTenLines)){
-				return true;
-			}else{
-				return false;
-			}
+			return failedLines;
 		}
 	}
 	
 	// Processes a line involving a song rank
-	private boolean ProcessLine(String line, int lineNum){
-		String[] parts = line.split("-");
+	private boolean ProcessLine(String line, int lineNum, int attemptNum){
+		String[] parts = line.split(splitters[attemptNum]);
 		String song;
 		String artist;
 		int points;
+		System.out.println("Processing line: \"" + line + "\"");
 		if (parts.length < 2){ 			// Try to split by " ", find word combinations in an existing song name in the chart
+			System.out.println("Line \"" + line + "\" has less than two parts when split by \"" + splitters[attemptNum] + "\"");
 			parts = line.split(" ");
 			if (parts.length < 2){		// Failed Parse
 				return false;
@@ -259,7 +258,11 @@ public class MainWindow extends JFrame implements ActionListener{
 						}
 					}
 				}
-				return false;	// If the song was not found, parse failed
+				if (attemptNum + 1 < splitters.length){	// Tries to parse with next splitter
+					return ProcessLine(line, lineNum, ++attemptNum);
+				}else{
+					return false;	// If the song was not found, parse failed					
+				}
 			}
 		}else if (parts.length == 2){	// Correct formatting
 			if (parts[0].length() < 2 || parts[1].length() < 2){
@@ -270,8 +273,8 @@ public class MainWindow extends JFrame implements ActionListener{
 			points = ProcessPoints(parts[0], lineNum);
 			tempSongs.add(new ChartSong(song, artist, points));
 			return true;
-		}else if (parts.length == 3){		// One too many -'s (could be band name) 1. t-ara - so crazy     1. so crazy - t-ara
-			if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
+		}else if (parts.length == 3 && attemptNum == 0){		// One too many -'s (could be band name) 1. t-ara - so crazy     1. so crazy - t-ara
+			if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
 				System.out.println("Processing hyphen: \"" + line + "\"");
 				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
 					song = ProcessSongName(parts[0]);
@@ -288,10 +291,60 @@ public class MainWindow extends JFrame implements ActionListener{
 				}else{	// Failed Parse
 					return false;
 				}
-			}else{		// Failed Parse
-				return false;
+			}else if (line.toLowerCase().contains("ah-ah")){ 	// Special case for ah-ah
+				if (parts[0].toLowerCase().contains("ah") && parts[1].toLowerCase().contains("ah")){
+					song = ProcessSongName(parts[0] + "-" + parts[1]);
+					artist = ProcessArtist(parts[2]);
+					points = ProcessPoints(parts[0], lineNum);
+					tempSongs.add(new ChartSong(song, artist, points));
+					return true;
+				}else if (parts[1].toLowerCase().contains("ah") && parts[2].toLowerCase().contains("ah")){
+					song = ProcessSongName(parts[1] + "-" + parts[2]);
+					artist = ProcessArtist(parts[0]);
+					points = ProcessPoints(parts[0], lineNum);
+					tempSongs.add(new ChartSong(song, artist, points));
+					return true;
+				}else{
+					return false;	// Failed parse
+				}
+			}else if (IsDigits(parts[0])){	// Format of 1- song - artist
+				if (Integer.parseInt(parts[0]) - lineNum < 5){	// If it's reasonable that they numbered their songs
+					song = ProcessSongName(parts[1]);
+					artist = ProcessArtist(parts[2]);
+					points = ProcessPoints(parts[0], lineNum);
+					tempSongs.add(new ChartSong(song, artist, points));
+					return true;
+				}else{
+					return false;
+				}
+			}else{
+				return false;	// Failed parse
 			}
-		}else{		// 4 or more -'s -> Failed Parse
+		}else if (parts.length == 4){	// 4 -'s > could be 1- song	- ar-tist
+			if (IsDigits(parts[0])){	// Format of 1- song artist
+				if (Integer.parseInt(parts[0]) - lineNum < 5){	// If it's reasonable that they numbered their songs
+					if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
+						System.out.println("Processing hyphen: \"" + line + "\"");
+						if (parts[2].length() < 3){		// Format of "1- so crazy - t-ara"
+							song = ProcessSongName(parts[1]);
+							artist = ProcessArtist(parts[2] + "-" + parts[3]);
+							points = ProcessPoints(parts[0], lineNum);
+							tempSongs.add(new ChartSong(song, artist, points));
+							return true;
+						}else if (parts[1].length() < 3){		// Format of "1- t-ara - so crazy"
+							song = ProcessSongName(parts[3]);
+							artist = ProcessArtist(parts[1] + "-" + parts[2]);
+							points = ProcessPoints(parts[0], lineNum);
+							tempSongs.add(new ChartSong(song, artist, points));
+							return true;
+						}else{	// Failed Parse
+							return false;
+						}
+					}
+				}
+			}
+			return false;
+		}else{ 	// 5 or more -'s -> Failed Parse
 			return false;
 		}
 	}
@@ -304,10 +357,13 @@ public class MainWindow extends JFrame implements ActionListener{
 		}
 		while (songChars.contains(tempSong.substring(0,1))){	// removes numbers and spaces at the beginning of the name
 			//System.out.println("Current String: \"" + tempSong + "\"");
-			if (Character.isDigit(tempSong.charAt(0)) && Character.isLetter(tempSong.charAt(1))){	// Saves band names like 4Minute
+			if (tempSong.length() > 1 && Character.isDigit(tempSong.charAt(0)) && Character.isLetter(tempSong.charAt(1))){	// Saves band names like 4Minute
 				break;
+			}else if (tempSong.length() > 1){
+				tempSong = tempSong.substring(1, tempSong.length());
+			}else{
+				return tempSong.toLowerCase();
 			}
-			tempSong = tempSong.substring(1, tempSong.length());
 		}
 		return tempSong.toLowerCase();
 	}
@@ -341,6 +397,27 @@ public class MainWindow extends JFrame implements ActionListener{
 		}else{		// Numbers not included, just a list of songs and artists
 			return 10 - line;
 		}
+	}
+	
+	// Removes any duplicate votes in a comment before adding to the chart
+	private void CheckForDuplicates(){
+		for (int i = 0; i < tempSongs.size() - 1; i++){
+			for (int j = i + 1; j < tempSongs.size(); j++){
+				if (tempSongs.get(i).isEqual(tempSongs.get(j))){
+					tempSongs.remove(j);
+				}
+			}
+		}
+	}
+	
+	// Checks if a string is all digits
+	private boolean IsDigits(String str){
+		for (int i = 0; i < str.length(); i++){
+			if (!Character.isDigit(str.charAt(i))){
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	private String CombineRestOfParts(String[] parts, int index){

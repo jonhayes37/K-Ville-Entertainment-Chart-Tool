@@ -3,6 +3,7 @@ package mainPackage;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.r4studios.DataStructures.List;
 
@@ -10,11 +11,13 @@ public class Chart {
 	
 	private List<ChartSong> chartSongs;
 	private List<String> failParses;
+	private List<Integer> failParseLines;
 	private String savePath;
 	
 	public Chart(String save){
-		chartSongs = new List<ChartSong>();
-		failParses = new List<String>();
+		this.chartSongs = new List<ChartSong>();
+		this.failParses = new List<String>();
+		this.failParseLines = new List<Integer>();
 		this.savePath = save;
 	}
 	
@@ -46,8 +49,28 @@ public class Chart {
 		
 	}
 	
-	public void AddFailedParse(String comment){
+	// Splits comments by -2 to know when the comments end
+	public void AddFailedParse(String comment, ArrayList<Integer> line){
 		failParses.Push(comment);
+		for (int i = 0; i < line.size(); i++){
+			failParseLines.Push(line.get(i));
+		}
+		failParseLines.Push(-2);
+		
+	}
+	
+	// Processes chart to improve and amalgamate results
+	public void ProcessChart(){
+		// Checks all songs for reversed values (song is artist, artist is song; if so it combines their points and removes the duplicate
+		for (int i = 0; i < this.chartSongs.getSize() - 1; i++){
+			for (int j = i + 1; j < this.chartSongs.getSize(); j++){
+				if (this.chartSongs.GetValueAt(i).getArtistName().equals(this.chartSongs.GetValueAt(j).getSongName()) &&
+						this.chartSongs.GetValueAt(i).getSongName().equals(this.chartSongs.GetValueAt(j).getArtistName())){
+					this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
+					this.chartSongs.RemoveAt(j);
+				}
+			}
+		}
 	}
 	
 	// Creates the two .txt files from parsed comments
@@ -60,6 +83,7 @@ public class Chart {
 				ChartSong tempSong = chartSongs.GetValueAt(i);
 				if (i == 50){
 					bw.write("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+					bw.newLine();
 				}
 				bw.write((i + 1) + ". (" + tempSong.getPoints() + " points) " + tempSong.getSongName() + " - " + tempSong.getArtistName());
 				bw.newLine();
@@ -69,12 +93,20 @@ public class Chart {
 			// Writing failed parses
 			bw = new BufferedWriter(new FileWriter(savePath + "/Failed Comments.txt"));
 			for (int i = 0; i < failParses.getSize(); i++){
-				bw.write("~~~~~ Comment " + (i + 1) + "~~~~~");// + failParses.GetValueAt(i));
+				bw.write("~~~~~ Comment " + (i + 1) + "~~~~~ (Failed on line(s) marked with ***)");
 				bw.newLine();
 				String[] lines = failParses.GetValueAt(i).split("\n");
 				for (int j = 0; j < lines.length; j++){
-					bw.write(lines[j]);
+					if (j == failParseLines.GetValueAt(0)){	// Formats failed lines
+						bw.write("*** " + lines[j]);
+						failParseLines.RemoveAt(0);
+					}else{
+						bw.write(lines[j]);
+					}
 					bw.newLine();
+				}
+				if (failParseLines.GetValueAt(0) == -2){	// Preparing for the next comment's failed lines
+					failParseLines.RemoveAt(0);
 				}
 				bw.newLine();
 			}
