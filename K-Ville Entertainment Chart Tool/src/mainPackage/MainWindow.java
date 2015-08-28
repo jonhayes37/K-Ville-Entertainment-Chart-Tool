@@ -8,7 +8,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -37,16 +36,7 @@ import com.google.common.collect.Lists;
 /*
  * TODO:
  * - Expand first 100 to as many comments as needed
- * - Improve algorithm to parse comments
  * - determine if replies are being included
- * 
- * - DONE add array of strings to try processing line split with ("by", "/", etc) if "-" split fails
- * - DONE add successful lines, only exclude failed ones and indicate it in failed txt file
- * - DONE track duplicate songs in a comment
- * - DONE flipped artists
- * - DONE Exception for teen top
- * - TODO Add exception for "one. song - artist" (array of words numbers, check those in song parse
- * - algorithm to identify one character off / very similar entries (girls' vs girls, girls generation vs snsd) -> if one of the entries matches and the otehr is close (function determines closeness)
  */
 
 public class MainWindow extends JFrame implements ActionListener{
@@ -204,8 +194,6 @@ public class MainWindow extends JFrame implements ActionListener{
 		ArrayList<Integer> failedLines = new ArrayList<Integer>();
 		String[] lines = comment;
 		lines[lines.length - 1] = lines[lines.length - 1].substring(0, lines[lines.length - 1].length() - 1);	// Removes "?" at the end of each comment
-		System.out.println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-		System.out.println("Number of lines: " + lines.length);
 		if (lines.length < 10 || lines.length > 10){			// Process improper formatting here
 			int successfulLines = 0;
 			for (int j = 0; j < lines.length; j++){
@@ -234,9 +222,9 @@ public class MainWindow extends JFrame implements ActionListener{
 		String song;
 		String artist;
 		int points;
-		System.out.println("Processing line: \"" + line + "\"");
+		//System.out.println("Processing line: \"" + line + "\"");
 		if (parts.length < 2){ 			// Try to split by " ", find word combinations in an existing song name in the chart
-			System.out.println("Line \"" + line + "\" has less than two parts when split by \"" + splitters[attemptNum] + "\"");
+			//System.out.println("Line \"" + line + "\" has less than two parts when split by \"" + splitters[attemptNum] + "\"");
 			parts = line.split(" ");
 			if (parts.length < 2){		// Failed Parse
 				return false;
@@ -248,7 +236,7 @@ public class MainWindow extends JFrame implements ActionListener{
 					if (i > 1){
 						tempCheck += (" " + parts[i]);
 					}
-					System.out.println("Checking Chart for: \"" + tempCheck + "\"");
+				//	System.out.println("Checking Chart for: \"" + tempCheck + "\"");
 					for (int j = 0; j < chart.getChartSongs().getSize(); j++){
 						if (tempCheck.toLowerCase().equals(chart.getChartSongs().GetValueAt(j).getSongName())){	// If the song matches a chart song
 							song = tempCheck;
@@ -275,7 +263,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			return true;
 		}else if (parts.length == 3 && attemptNum == 0){		// One too many -'s (could be band name) 1. t-ara - so crazy     1. so crazy - t-ara
 			if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
-				System.out.println("Processing hyphen: \"" + line + "\"");
+				//System.out.println("Processing hyphen: \"" + line + "\"");
 				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
 					song = ProcessSongName(parts[0]);
 					artist = ProcessArtist(parts[1] + "-" + parts[2]);
@@ -324,7 +312,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			if (IsDigits(parts[0])){	// Format of 1- song artist
 				if (Integer.parseInt(parts[0]) - lineNum < 5){	// If it's reasonable that they numbered their songs
 					if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
-						System.out.println("Processing hyphen: \"" + line + "\"");
+					//	System.out.println("Processing hyphen: \"" + line + "\"");
 						if (parts[2].length() < 3){		// Format of "1- so crazy - t-ara"
 							song = ProcessSongName(parts[1]);
 							artist = ProcessArtist(parts[2] + "-" + parts[3]);
@@ -350,7 +338,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	}
 	
 	private String ProcessSongName(String song){
-		System.out.println("Song to process: \"" + song + "\"");
+		//System.out.println("Song to process: \"" + song + "\"");
 		String tempSong = song;
 		while (tempSong.substring(tempSong.length() - 1).equals(" ")){	// removes spaces at the end of the name
 			tempSong = tempSong.substring(0, tempSong.length() - 1);
@@ -369,12 +357,12 @@ public class MainWindow extends JFrame implements ActionListener{
 	}
 	
 	private String ProcessArtist(String artist){
-		System.out.println("Artist to process: \"" + artist + "\"");
+		//System.out.println("Artist to process: \"" + artist + "\"");
 		String tempArt = artist;
 		while (artistChars.contains(tempArt.substring(tempArt.length() - 1))){	// Removing unwanted characters at the end
 			tempArt = tempArt.substring(0, tempArt.length() - 1);
 		}
-		System.out.println("Current String: \"" + tempArt + "\"");
+		//System.out.println("Current String: \"" + tempArt + "\"");
 		if (tempArt.split(" ").length > 1 && tempArt.split(" ")[0].length() > 0 && Character.isDigit(tempArt.split(" ")[0].charAt(0))){	// format of "1. artist song"
 			tempArt = CombineRestOfParts(tempArt.split(" "), 0);
 		}
@@ -385,7 +373,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	}
 	
 	private int ProcessPoints(String song, int line){
-		System.out.println("Points to process: \"" + song + "\" (Default: " + (10-line) + " pts)");
+		//System.out.println("Points to process: \"" + song + "\" (Default: " + (10-line) + " pts)");
 		int lastNumIndex = 0;
 		int counter = 0;
 		if (Character.isDigit(song.charAt(0))){		// Number given
