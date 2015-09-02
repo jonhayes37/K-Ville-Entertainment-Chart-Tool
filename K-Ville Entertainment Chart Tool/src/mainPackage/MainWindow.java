@@ -15,54 +15,48 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JSpinner;
 import javax.swing.JTextField;
-import javax.swing.SpinnerNumberModel;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.TitledBorder;
-
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.youtube.YouTube;
+import com.google.api.services.youtube.model.Comment;
+import com.google.api.services.youtube.model.CommentListResponse;
 import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
-
-/*
- * TODO:
- * - Expand first 100 to as many comments as needed
- * - determine if replies are being included
- */
 
 public class MainWindow extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 414975340316732097L;
 	private JPanel pnlMain;
 	private JPanel pnlCentre;
-	private JPanel pnlMaxCom;
 	private JPanel[] pnlRows = new JPanel[2];
 	private JTextField[] txtRows = new JTextField[2];
-	private JLabel lblMaxCom = new JLabel("Max # of Comments:");
-	private JSpinner spnCom;
 	private JButton btnBrowse = new JButton("Browse");
 	private JButton btnGenerate = new JButton("Generate Chart Totals");
 	private String savePath = "";
 	private String videoURL = "";
 	private static YouTube youtube;
-	private long maxComments = 1;
-	private Chart chart;
+	private Chart chart = new Chart();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
 	private static final String VERSION_NUMBER = "0.7";
-	private final String[] splitters = new String[]{"-","by","/","~"};
+	private final String[] splitters = new String[]{"-","by","/","~","|"};
 	private final String[] titles = new String[]{"Video URL","Save Directory"};
-	private String artistChars = " ;,?";
-	private String songChars = " -1023456789.);?,";
+	private String artistChars = ";,?";
+	private String songChars = "-1023456789.);?,";
+	private JMenuBar menuBar = new JMenuBar();
+	private JMenu fileMenu = new JMenu("File");
+	private JMenuItem updateChartFile = new JMenuItem("Update Top 50 Chart");
 	
 	// Window Creation
 	public MainWindow(){
@@ -70,8 +64,12 @@ public class MainWindow extends JFrame implements ActionListener{
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e3) { e3.printStackTrace();	}
 		
+		updateChartFile.addActionListener(this);
+		fileMenu.add(updateChartFile);
+		menuBar.add(fileMenu);
+		
 		pnlCentre = new JPanel();
-		pnlCentre.setLayout(new GridLayout(3,1,0,5));
+		pnlCentre.setLayout(new GridLayout(2,1,0,5));
 		pnlCentre.setBorder(BorderFactory.createEmptyBorder(0,0,10,0));
 		btnBrowse.addActionListener(this);
 		btnGenerate.addActionListener(this);
@@ -93,13 +91,6 @@ public class MainWindow extends JFrame implements ActionListener{
 		pnlCentre.add(pnlRows[0]);
 		pnlCentre.add(pnlRows[1]);
 		
-		pnlMaxCom = new JPanel();
-		pnlMaxCom.setLayout(new BorderLayout());
-		pnlMaxCom.add(lblMaxCom);
-		spnCom = new JSpinner(new SpinnerNumberModel(500,100,5000,100));
-		pnlMaxCom.add(spnCom, BorderLayout.EAST);
-		pnlCentre.add(pnlMaxCom);
-		
 		pnlMain = new JPanel();
 		pnlMain.setLayout(new BorderLayout());
 		pnlMain.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
@@ -107,9 +98,10 @@ public class MainWindow extends JFrame implements ActionListener{
 		pnlMain.add(btnGenerate, BorderLayout.SOUTH);
 		
 		this.add(pnlMain);
+		this.setJMenuBar(menuBar);
 		this.setIconImage(new ImageIcon("icon.png").getImage());
         this.setTitle("K-Ville Entertainment Chart Tool v" + VERSION_NUMBER);
-        this.setSize(400,230);
+        this.setSize(400,200);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
 	}
@@ -134,10 +126,17 @@ public class MainWindow extends JFrame implements ActionListener{
 					videoURL = videoURL.split("=")[1];
 				}
 				System.out.println(videoURL);
-				maxComments = (int)spnCom.getValue();
 				chart = new Chart(savePath);
 				GenerateChart();
 			}
+		}else if (e.getSource() == updateChartFile){
+			JFileChooser opener = new JFileChooser();
+	        int ret = opener.showOpenDialog(this);
+	        if(ret == JFileChooser.APPROVE_OPTION){    // On selection, displays and sets path
+	            String tempPath = opener.getSelectedFile().getPath();
+	            chart.UpdateChartFile(tempPath);
+	            JOptionPane.showMessageDialog(this, "Updated Top 50 Chart!", "Updated Chart", JOptionPane.INFORMATION_MESSAGE);
+	        }
 		}
 	}
 	
@@ -156,14 +155,6 @@ public class MainWindow extends JFrame implements ActionListener{
 		System.out.println("Processed chart successfully");
 		chart.CreateChart();
 		System.out.println("Saved chart successfully");
-		/*try{
-			BufferedWriter bw = new BufferedWriter(new FileWriter(savePath + "/comments.txt"));
-			for (int i = 0; i < commentList.size(); i++){
-				bw.write("#" + (i + 1) + " - " + commentList.get(i));
-				bw.newLine();
-			}
-			bw.close();
-		}catch(IOException e){ e.printStackTrace();	}*/
 		JOptionPane.showMessageDialog(this, "Finished generation!", "Finished", JOptionPane.INFORMATION_MESSAGE);
 	}
 	
@@ -188,14 +179,14 @@ public class MainWindow extends JFrame implements ActionListener{
 		}
 	}
 	
-	// Returns -1 for a success, line number for failure if it failed
+	// Returns -1 for a success, or the line number if it failed
 	private ArrayList<Integer> ProcessComment(String[] comment){
 		tempSongs = new ArrayList<ChartSong>();
 		ArrayList<Integer> failedLines = new ArrayList<Integer>();
 		String[] lines = comment;
 		lines[lines.length - 1] = lines[lines.length - 1].substring(0, lines[lines.length - 1].length() - 1);	// Removes "?" at the end of each comment
 		if (lines.length < 10 || lines.length > 10){			// Process improper formatting here
-			int successfulLines = 0;
+			int successfulLines = 0;	// successfulLines keeps track of how many points a song will get if the number cannot be properly processed 
 			for (int j = 0; j < lines.length; j++){
 				boolean success = ProcessLine(lines[j], successfulLines, 0);
 				if (!success){
@@ -296,7 +287,7 @@ public class MainWindow extends JFrame implements ActionListener{
 					return false;	// Failed parse
 				}
 			}else if (IsDigits(parts[0])){	// Format of 1- song - artist
-				if (Integer.parseInt(parts[0]) - lineNum < 5){	// If it's reasonable that they numbered their songs
+				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
 					song = ProcessSongName(parts[1]);
 					artist = ProcessArtist(parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
@@ -310,7 +301,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			}
 		}else if (parts.length == 4){	// 4 -'s > could be 1- song	- ar-tist
 			if (IsDigits(parts[0])){	// Format of 1- song artist
-				if (Integer.parseInt(parts[0]) - lineNum < 5){	// If it's reasonable that they numbered their songs
+				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
 					if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
 					//	System.out.println("Processing hyphen: \"" + line + "\"");
 						if (parts[2].length() < 3){		// Format of "1- so crazy - t-ara"
@@ -339,10 +330,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	
 	private String ProcessSongName(String song){
 		//System.out.println("Song to process: \"" + song + "\"");
-		String tempSong = song;
-		while (tempSong.substring(tempSong.length() - 1).equals(" ")){	// removes spaces at the end of the name
-			tempSong = tempSong.substring(0, tempSong.length() - 1);
-		}
+		String tempSong = RemoveSpaces(song);
 		while (songChars.contains(tempSong.substring(0,1))){	// removes numbers and spaces at the beginning of the name
 			//System.out.println("Current String: \"" + tempSong + "\"");
 			if (tempSong.length() > 1 && Character.isDigit(tempSong.charAt(0)) && Character.isLetter(tempSong.charAt(1))){	// Saves band names like 4Minute
@@ -358,7 +346,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	
 	private String ProcessArtist(String artist){
 		//System.out.println("Artist to process: \"" + artist + "\"");
-		String tempArt = artist;
+		String tempArt = RemoveSpaces(artist);
 		while (artistChars.contains(tempArt.substring(tempArt.length() - 1))){	// Removing unwanted characters at the end
 			tempArt = tempArt.substring(0, tempArt.length() - 1);
 		}
@@ -381,7 +369,9 @@ public class MainWindow extends JFrame implements ActionListener{
 				lastNumIndex = counter;
 				counter++;
 			}
-			return Integer.parseInt(song.substring(0, lastNumIndex + 1)); 
+			int points = Integer.parseInt(song.substring(0, lastNumIndex + 1));
+			//System.out.println("Song earned: " + (11 - points) + " points");
+			return 11 - points; 
 		}else{		// Numbers not included, just a list of songs and artists
 			return 10 - line;
 		}
@@ -398,16 +388,36 @@ public class MainWindow extends JFrame implements ActionListener{
 		}
 	}
 	
+	// Removes spaces at the beginning and end of the string
+	private String RemoveSpaces(String str){
+		//System.out.println("Removing spaces from: \"" + str + "\"");
+		String tempStr = str;
+		if (tempStr.length() < 1){
+			return str;
+		}
+		while (tempStr.length() > 0 && tempStr.substring(tempStr.length() - 1).equals(" ")){	// removes spaces at the end of the name
+			tempStr = tempStr.substring(0, tempStr.length() - 1);
+		}
+		while (tempStr.length() > 0 && tempStr.substring(0,1).equals(" ")){	// removes spaces at the beginning of the name
+			tempStr = tempStr.substring(1, tempStr.length());
+		}
+		return tempStr;
+	}
+	
 	// Checks if a string is all digits
 	private boolean IsDigits(String str){
+		if (str.length() < 1){
+			return false;
+		}
 		for (int i = 0; i < str.length(); i++){
-			if (!Character.isDigit(str.charAt(i))){
+			if (!Character.isDigit(str.charAt(i)) && str.charAt(i) != '.'&& str.charAt(i) != ' ' && str.charAt(i) != ')'){
 				return false;
 			}
 		}
 		return true;
 	}
 	
+	// Recombines split artist / song info
 	private String CombineRestOfParts(String[] parts, int index){
 		String tempString = "";
 		for (int i = index + 1; i < parts.length; i++){
@@ -416,6 +426,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		return tempString.substring(0, tempString.length() - 1);
 	}
 	
+	// Gets comments from YouTube via a URL
 	private void FetchComments(){
 		List<String> scopes = Lists.newArrayList("https://www.googleapis.com/auth/youtube.force-ssl");
 		scopes.add("https://www.googleapis.com/auth/youtube.force-ssl");
@@ -428,38 +439,51 @@ public class MainWindow extends JFrame implements ActionListener{
             youtube = new YouTube.Builder(Auth.HTTP_TRANSPORT, Auth.JSON_FACTORY, credential)
                     .setApplicationName("youtube-cmdline-commentthreads-sample").build();
 
-            // Prompt the user for the ID of a video to comment on.
-            // Retrieve the video ID that the user is commenting to.
-            String videoId = videoURL;
-            System.out.println("You chose " + videoId + " to subscribe.");
-
-            // Prompt the user for the comment text.
-            // Retrieve the text that the user is commenting.
-            String text = "";
-            System.out.println("You chose " + text + " to subscribe.");
-
-            // All the available methods are used in sequence just for the sake
-            // of an example.
-
             // Call the YouTube Data API's commentThreads.list method to
             // retrieve video comment threads.
-            CommentThreadListResponse videoCommentsListResponse = youtube.commentThreads().list("snippet").setVideoId(videoId).setTextFormat("plainText").setMaxResults((long)100).execute();
+            CommentThreadListResponse videoCommentsListResponse = youtube.commentThreads().list("snippet").setVideoId(videoURL).setTextFormat("plainText").setMaxResults((long)100).execute();
             List<CommentThread> videoComments = videoCommentsListResponse.getItems();
-
+            String nextToken = videoCommentsListResponse.getNextPageToken();
+            System.out.println("Next token: \"" + nextToken + "\"");
+            while (nextToken != null){
+            	videoCommentsListResponse = youtube.commentThreads().list("snippet").setVideoId(videoURL).setTextFormat("plainText").setPageToken(nextToken).setMaxResults((long)100).execute();
+            	List<CommentThread> tempList = videoCommentsListResponse.getItems(); 
+            	for (int i = 0; i < tempList.size(); i++){
+            		videoComments.add(tempList.get(i));
+            	}
+                nextToken = videoCommentsListResponse.getNextPageToken();
+                System.out.println("Next token: \"" + nextToken + "\"");
+            }
+            
             if (videoComments.isEmpty()) {
                 System.out.println("Can't get video comments.");
             } else {
             	ArrayList<String> comments = new ArrayList<String>();
                 // Print information from the API response.
-                System.out.println("\n================== Returned Video Comments ==================\n");
+                //System.out.println("\n================== Returned Video Comments ==================\n");
                 for (CommentThread videoComment : videoComments) {
-                    CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
-                    System.out.println("  - Author: " + snippet.getAuthorDisplayName());
-                    System.out.println("  - Comment: \n" + snippet.getTextDisplay());
-                    System.out.println("\n-------------------------------------------------------------\n");
+                	CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
                     comments.add(snippet.getTextDisplay());
+                	CommentListResponse commentsListResponse = youtube.comments().list("snippet").setParentId(videoComment.getId()).setTextFormat("plainText").execute();
+                	if (!commentsListResponse.isEmpty()){
+	                    List<Comment> comms = commentsListResponse.getItems();
+	                    //System.out.println("Size: " + comms.size());
+	                    if (comms.isEmpty()) {
+	                        //System.out.println("Can't get comment replies.");
+	                    } else {
+	                        // Print information from the API response.
+	                        System.out.println("\n================== Returned Comment Replies ==================\n");
+	                        for (Comment commentReply : comms) {
+                        		CommentSnippet snip = commentReply.getSnippet();
+                                System.out.println("  - Comment: " + snip.getTextDisplay());
+                                System.out.println("\n-------------------------------------------------------------\n");
+                                comments.add(snip.getTextDisplay());
+	                        }
+	                    }
+                    }
                 }
                 commentList = comments;
+                System.out.println("Number of comments to process: " + commentList.size());
              /*   CommentThread firstComment = videoComments.get(0);
 
                 // Will use this thread as parent to new reply.
@@ -528,7 +552,6 @@ public class MainWindow extends JFrame implements ActionListener{
             System.err.println("GoogleJsonResponseException code: " + e.getDetails().getCode()
                     + " : " + e.getDetails().getMessage());
             e.printStackTrace();
-
         } catch (IOException e) {
             System.err.println("IOException: " + e.getMessage());
             e.printStackTrace();
@@ -537,7 +560,6 @@ public class MainWindow extends JFrame implements ActionListener{
             t.printStackTrace();
         }
     }
-
 
 	// Program starts here
 	public static void main(String[] args){
