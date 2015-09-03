@@ -144,7 +144,6 @@ public class MainWindow extends JFrame implements ActionListener{
 	// Generates the Chart and corresponding files from the video's comments
 	private void GenerateChart(){
 		this.setTitle("Fetching YouTube comments...");
-		// TODO Fetch comments (15%) -> replies (75%) -> Processing comments (5%) -> Processing Chart (3%) -> Creating Chart (2%)
 		FetchComments();				// Fetch comments from YouTube
 		this.setTitle("Processing comments...");
 		ProcessComments(commentList);	// Process fetched comments and add them to the Chart

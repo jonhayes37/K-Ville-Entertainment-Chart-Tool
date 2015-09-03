@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
+import javax.swing.JOptionPane;
+
 import com.r4studios.DataStructures.List;
 
 public class Chart {
@@ -162,12 +164,13 @@ public class Chart {
 		}
 	}
 	
-	// Creates the two .txt files from parsed comments
+	// Creates the three.txt files from parsed comments
 	public void CreateChart(){
 		this.chartSongs = this.chartSongs.QuickSort();
+		BufferedWriter bw;
 		try{
 			// Writing chart
-			BufferedWriter bw = new BufferedWriter(new FileWriter(savePath + "/Top 50 Chart.txt"));
+			bw = new BufferedWriter(new FileWriter(savePath + "/Top 50 Chart.txt"));
 			for (int i = 0; i < chartSongs.getSize(); i++){
 				ChartSong tempSong = chartSongs.GetValueAt(i);
 				if (i == 50){
@@ -178,7 +181,8 @@ public class Chart {
 				bw.newLine();
 			}
 			bw.close();
-			
+		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Top 50 Chart.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
+		try{
 			// Writing failed parses
 			bw = new BufferedWriter(new FileWriter(savePath + "/Failed Comments.txt"));
 			for (int i = 0; i < failParses.getSize(); i++){
@@ -200,7 +204,8 @@ public class Chart {
 				bw.newLine();
 			}
 			bw.close();
-			
+		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Failed Comments.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
+		try{
 			// Writing combines
 			bw = new BufferedWriter(new FileWriter(savePath + "/Merged Chart Songs.txt"));
 			for (int i = 0; i < this.combinedCloseMatches.getSize(); i++){
@@ -214,7 +219,7 @@ public class Chart {
 				i++;
 			}
 			bw.close();
-		}catch(IOException e){ e.printStackTrace(); }
+		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Merged Chart Songs.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
 	}
 	
 	private boolean IsGGName(String name){
