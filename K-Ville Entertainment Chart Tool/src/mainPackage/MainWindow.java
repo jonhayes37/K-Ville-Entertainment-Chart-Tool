@@ -49,7 +49,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private Chart chart = new Chart();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private static final String VERSION_NUMBER = "0.7";
+	private static final String VERSION_NUMBER = "0.9";
 	private final String[] splitters = new String[]{"-","by","/","~","|"};
 	private final String[] titles = new String[]{"Video URL","Save Directory"};
 	private String artistChars = ";,?";
@@ -111,7 +111,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		if (e.getSource() == btnBrowse){			// Browse for Save Directory 
 			JFileChooser opener = new JFileChooser();
 			opener.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-	        int ret = opener.showOpenDialog(this);
+	        int ret = opener.showDialog(this, "Choose a Directory");
 	        if(ret == JFileChooser.APPROVE_OPTION){    // On selection, displays and sets path
 	            savePath = opener.getSelectedFile().getPath();
 	            txtRows[1].setText(savePath);
@@ -131,7 +131,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			}
 		}else if (e.getSource() == updateChartFile){
 			JFileChooser opener = new JFileChooser();
-	        int ret = opener.showOpenDialog(this);
+	        int ret = opener.showDialog(this, "Choose Chart File");
 	        if(ret == JFileChooser.APPROVE_OPTION){    // On selection, displays and sets path
 	            String tempPath = opener.getSelectedFile().getPath();
 	            chart.UpdateChartFile(tempPath);
@@ -169,8 +169,8 @@ public class MainWindow extends JFrame implements ActionListener{
 			
 			CheckForDuplicates();
 			for (int j = 0; j < tempSongs.size(); j++){
-				tempSongs.get(j).setArtistName(tempSongs.get(j).getArtistName().toLowerCase());
-				tempSongs.get(j).setSongName(tempSongs.get(j).getSongName().toLowerCase());
+				tempSongs.get(j).setArtistName(RemoveSpaces(tempSongs.get(j).getArtistName().toLowerCase()));
+				tempSongs.get(j).setSongName(RemoveSpaces(tempSongs.get(j).getSongName().toLowerCase()));
 				chart.AddValue(tempSongs.get(j));
 			}
 			if (success.size() > 0){	// If lines failed
