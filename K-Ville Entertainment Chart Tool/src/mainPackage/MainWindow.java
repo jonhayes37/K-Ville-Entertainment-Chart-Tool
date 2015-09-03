@@ -143,10 +143,16 @@ public class MainWindow extends JFrame implements ActionListener{
 	
 	// Generates the Chart and corresponding files from the video's comments
 	private void GenerateChart(){
+		this.setTitle("Fetching YouTube comments...");
+		// TODO Fetch comments (15%) -> replies (75%) -> Processing comments (5%) -> Processing Chart (3%) -> Creating Chart (2%)
 		FetchComments();				// Fetch comments from YouTube
+		this.setTitle("Processing comments...");
 		ProcessComments(commentList);	// Process fetched comments and add them to the Chart
+		this.setTitle("Processing chart...");
 		chart.ProcessChart();			// Chart processing to reduce manual post-editing
+		this.setTitle("Creating Files...");
 		chart.CreateChart();			// File creation
+		this.setTitle("Done!");
 		JOptionPane.showMessageDialog(this, "Finished generation!", "Finished", JOptionPane.INFORMATION_MESSAGE);
 	}
 	
@@ -184,6 +190,7 @@ public class MainWindow extends JFrame implements ActionListener{
             	ArrayList<String> comments = new ArrayList<String>();
             	int i = 0;
                 for (CommentThread videoComment : videoComments) {
+                	this.setTitle("Fetching YouTube replies (" + (int)((i + 1) / (float)videoComments.size() * 75) + "%)");
                 	System.out.println("Processing reply... (" + i + ")");
                 	CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
                     comments.add(snippet.getTextDisplay());
