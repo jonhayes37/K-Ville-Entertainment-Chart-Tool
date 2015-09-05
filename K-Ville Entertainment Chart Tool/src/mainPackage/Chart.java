@@ -200,11 +200,9 @@ public class Chart {
 	
 	// Removes all spaces from a string
 	private String RemoveChars(String str){
-		System.out.println("Removing spaces from: \"" + str + "\"");
 		String newString = str;
 		int i = 0;
 		while (i < newString.length()){
-			System.out.println(newString);
 			if (newString.charAt(i) == ' ' || newString.charAt(i) == '-' || newString.charAt(i) == '’'){
 				if (i == 0){
 					newString = newString.substring(1);
@@ -257,19 +255,16 @@ public class Chart {
 			String line = br.readLine();
 			while (line != null){
 				if (!pastMain){
-					if (line.contains("~~~~~~~~~~")){
+					if (line.contains("~~~~~~~~~~") || line.length() < 1){
 						line = br.readLine();
 					}else if (line.toLowerCase().contains("stop sorting here")){
 						pastMain = true;
 						line = br.readLine();
 					}else{
-						System.out.println("Line: " + line);
 						String part = line.split(Pattern.quote(". ("))[1];
-						System.out.println("Part: " + part);
 						String[] parts = part.split(Pattern.quote(" points) "));
 						int num = Integer.parseInt(parts[0]);
 						part = parts[1];
-						System.out.println("Part: " + part);
 						parts = part.split(Pattern.quote(" - "));
 						String tempS = parts[0];
 						String tempA = parts[1];
@@ -277,15 +272,20 @@ public class Chart {
 						line = br.readLine();
 					}
 				}else{
-					afterInfo.Push(line);
-					br.readLine();
+					if (line.length() < 1){
+						afterInfo.Push("\n");
+					}else{
+						afterInfo.Push(line);
+					}
+					line = br.readLine();
 				}
 			}
 			br.close();
 			tempCS = tempCS.QuickSort();
 			
 			// Writing chart
-			BufferedWriter bw = new BufferedWriter(new FileWriter(savePath + "/Top 50 Chart.txt"));
+			//Files.delete(new Path(savePath + "/Top 50 Chart.txt"));
+			BufferedWriter bw = new BufferedWriter(new FileWriter(path));
 			for (int i = 0; i < tempCS.getSize(); i++){
 				ChartSong tempSong = tempCS.GetValueAt(i);
 				if (i == 50){

@@ -52,7 +52,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private Chart chart = new Chart();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private static final String VERSION_NUMBER = "0.9";
+	private static final String VERSION_NUMBER = "1.0";
 	private final String[] splitters = new String[]{"-","by","/","~","|"};
 	private final String[] titles = new String[]{"Video URL","Save Directory"};
 	private String artistChars = ";,?";
