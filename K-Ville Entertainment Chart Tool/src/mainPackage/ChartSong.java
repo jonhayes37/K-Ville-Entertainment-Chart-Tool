@@ -34,7 +34,7 @@ public class ChartSong implements Comparable<ChartSong>{
 	}
 	
 	public boolean isEqual(ChartSong cs2){
-		return (this.artistName.equals(cs2.artistName) && this.songName.equals(cs2.songName)) ? true : false;
+		return ((this.artistName.equals(cs2.artistName) && this.songName.equals(cs2.songName)) || (this.artistName.equals(cs2.songName) && this.songName.equals(cs2.artistName))) ? true : false;
 	}
 
 	public String getSongName(){ return this.songName; }

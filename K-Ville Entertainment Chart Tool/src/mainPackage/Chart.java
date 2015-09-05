@@ -8,12 +8,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import com.r4studios.DataStructures.List;
 
 public class Chart {
-	
+
 	private List<ChartSong> chartSongs;
 	private List<String> failParses;
 	private List<String> combinedCloseMatches;
@@ -77,88 +78,53 @@ public class Chart {
 	}
 	
 	// Processes chart to improve and amalgamate results
-	public void ProcessChart(){
+	public void ProcessChart(JFrame parent){
 		// Checks all songs for reversed values (song is artist, artist is song; if so it combines their points and removes the duplicate
-		for (int h = 0; h < 5; h++){	// Processes five times, just to be safe
-			for (int i = 0; i < this.chartSongs.getSize() - 1; i++){
-				for (int j = i + 1; j < this.chartSongs.getSize(); j++){
-					ChartSong s1 = this.chartSongs.GetValueAt(i);
-					ChartSong s2 = this.chartSongs.GetValueAt(j);
-					String song1 = s1.getSongName();
-					String song2 = s2.getSongName();
-					String artist1 = s1.getArtistName();
-					String artist2 = s2.getArtistName();
-					if (song1.equals(song2) && artist1.equals(artist2)){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
-						int minIndex = (maxIndex == i) ? j : i;
-						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
-						this.chartSongs.RemoveAt(minIndex);
-					}else if (artist1.equals(song2) && song1.equals(artist2)){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
-						int minIndex = (maxIndex == i) ? j : i;
-						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
-						this.chartSongs.RemoveAt(minIndex);
-					}else if ((song1.equals(song2) && (artist1.contains(artist2) || artist2.contains(artist1))) ||	// If one is correct and the other is close
-							(artist1.equals(artist2) && (song1.contains(song2) || song2.contains(song1)))){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
-						int minIndex = (maxIndex == i) ? j : i;
-						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
-						this.chartSongs.RemoveAt(minIndex);
-					}else if ((song1.equals(artist2) && (song2.contains(artist1) || artist1.contains(song2))) ||
-							(song2.equals(artist1) && (song1.contains(artist2) || artist2.contains(song1)))){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
-						int minIndex = (maxIndex == i) ? j : i;
-						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
-						this.chartSongs.RemoveAt(minIndex);
-					}else if ((song1.contains(song2) || song2.contains(song1)) && (IsGGName(artist1) && IsGGName(artist2))){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						this.chartSongs.GetValueAt(i).setArtistName("girls' generation");
-						this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
-						this.chartSongs.RemoveAt(j);
-					}else if ((artist1.contains(artist2) || artist2.contains(artist1)) && (IsGGName(song1) && IsGGName(song2))){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						this.chartSongs.GetValueAt(i).setSongName("girls' generation");
-						this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
-						this.chartSongs.RemoveAt(j);
-					}else if ((song1.contains(artist2) || artist2.contains(song1)) && (IsGGName(artist1) && IsGGName(song2))){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						this.chartSongs.GetValueAt(i).setArtistName("girls' generation");
-						this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
-						this.chartSongs.RemoveAt(j);
-					}else if ((song2.contains(artist1) || artist1.contains(song2)) && (IsGGName(artist2) && IsGGName(song1))){
-						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-						this.combinedClosePts.Push(s1.getPoints());
-						this.combinedClosePts.Push(s2.getPoints());
-						this.chartSongs.GetValueAt(i).setSongName("girls' generation");
-						this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
-						this.chartSongs.RemoveAt(j);
-					}
+		for (int i = 0; i < this.chartSongs.getSize() - 1; i++){
+			parent.setTitle("Processing Chart... (" + (int)((float)(i + 1) / chartSongs.getSize() * 100) + "%)");
+			for (int j = i + 1; j < this.chartSongs.getSize(); j++){
+				ChartSong s1 = this.chartSongs.GetValueAt(i);
+				ChartSong s2 = this.chartSongs.GetValueAt(j);
+				String song1 = s1.getSongName();
+				String song2 = s2.getSongName();
+				String artist1 = s1.getArtistName();
+				String artist2 = s2.getArtistName();
+				int comparison = AreStringsConnected(song1, song2, artist1, artist2);
+				if (comparison >= 0){
+					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+					this.combinedClosePts.Push(s1.getPoints());
+					this.combinedClosePts.Push(s2.getPoints());
+					int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
+					int minIndex = (maxIndex == i) ? j : i;
+					this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
+					this.chartSongs.RemoveAt(minIndex);
+				}else if ((SameCoreString(song1, song2) && (IsGGName(artist1) && IsGGName(artist2))) || (SameCoreString(song1, artist2) && (IsGGName(artist1) && IsGGName(song2)))){
+					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+					this.combinedClosePts.Push(s1.getPoints());
+					this.combinedClosePts.Push(s2.getPoints());
+					this.chartSongs.GetValueAt(i).setArtistName("girls generation");
+					this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
+					this.chartSongs.RemoveAt(j);
+				}else if ((SameCoreString(artist1, artist2) && (IsGGName(song1) && IsGGName(song2))) || (SameCoreString(song2, artist1) && (IsGGName(artist2) && IsGGName(song1)))){
+					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+					this.combinedClosePts.Push(s1.getPoints());
+					this.combinedClosePts.Push(s2.getPoints());
+					this.chartSongs.GetValueAt(i).setSongName("girls generation");
+					this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
+					this.chartSongs.RemoveAt(j);
+				}else if ((SameChars(song1,song2) && SameCoreString(artist1, artist2)) || (SameChars(artist1,artist2) && SameCoreString(song1, song2)) ||
+						(SameChars(song1,artist2) && SameCoreString(song2, artist1)) || (SameChars(artist1,song2) && SameCoreString(artist2, song1))){		// Checks if one set is the same without spaces
+					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+					this.combinedClosePts.Push(s1.getPoints());
+					this.combinedClosePts.Push(s2.getPoints());
+					int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
+					int minIndex = (maxIndex == i) ? j : i;
+					this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
+					this.chartSongs.RemoveAt(minIndex);
 				}
 			}
 		}
@@ -222,36 +188,97 @@ public class Chart {
 		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Merged Chart Songs.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
 	}
 	
+	// Checks if a string is a possible GG name
 	private boolean IsGGName(String name){
 		for (int i = 0; i < SNSD_NAMES.length; i++){
-			if (name.contains(SNSD_NAMES[i]) || name.equals(SNSD_NAMES[i])){
+			if (name.contains(SNSD_NAMES[i]) || name.equals(SNSD_NAMES[i]) || (name.contains("girl") && name.contains("generation"))){
 				return true;
 			}
 		}
 		return false;
 	}
 	
+	// Removes all spaces from a string
+	private String RemoveChars(String str){
+		System.out.println("Removing spaces from: \"" + str + "\"");
+		String newString = str;
+		int i = 0;
+		while (i < newString.length()){
+			System.out.println(newString);
+			if (newString.charAt(i) == ' ' || newString.charAt(i) == '-' || newString.charAt(i) == '’'){
+				if (i == 0){
+					newString = newString.substring(1);
+				}else if (i == str.length() - 1){
+					newString = newString.substring(0, newString.length() - 1);
+				}else{
+					newString = newString.substring(0, i) + newString.substring(i + 1, newString.length());
+				}
+			}else{
+				i++;
+			}
+		}
+		return newString;
+	}
+	
+	// Returns true if the strings are equal or if one contains the other
+	private boolean SameCoreString(String s1, String s2){
+		return (s1.equals(s2) || s1.contains(s2) || s2.contains(s1));
+	}
+	
+	// Returns 1 if the two items can be combined normally, 0 if they can be combined oppositely,
+	// and -1 if they cannot be combined
+	private int AreStringsConnected(String s1, String s2, String a1, String a2){
+		if (SameCoreString(s1,s2) && SameCoreString(a1,a2)){
+			return 1;
+		}else if (SameCoreString(s1,a2) && SameCoreString(s2,a1)){
+			return 0;
+		}else{
+			return -1;
+		}
+	}
+	
+	// Returns true if the two strings have nearly the same character sequence without spaces
+	private boolean SameChars(String s1, String s2){
+		String new1 = RemoveChars(s1);
+		String new2 = RemoveChars(s2);
+		if (new1.equals(new2) || new1.contains(new2) || new2.contains(new1)){
+			return true;
+		}else{
+			return false;
+		}
+	}
+	
 	public void UpdateChartFile(String path){
 		List<ChartSong> tempCS = new List<ChartSong>();
+		List<String> afterInfo = new List<String>();
+		boolean pastMain = false;
 		try{
 			BufferedReader br = new BufferedReader(new FileReader(path));
 			String line = br.readLine();
 			while (line != null){
-				if (line.contains("~~~~~~~~~~")){
-					line = br.readLine();
+				if (!pastMain){
+					if (line.contains("~~~~~~~~~~")){
+						line = br.readLine();
+					}else if (line.toLowerCase().contains("stop sorting here")){
+						pastMain = true;
+						line = br.readLine();
+					}else{
+						System.out.println("Line: " + line);
+						String part = line.split(Pattern.quote(". ("))[1];
+						System.out.println("Part: " + part);
+						String[] parts = part.split(Pattern.quote(" points) "));
+						int num = Integer.parseInt(parts[0]);
+						part = parts[1];
+						System.out.println("Part: " + part);
+						parts = part.split(Pattern.quote(" - "));
+						String tempS = parts[0];
+						String tempA = parts[1];
+						tempCS.Push(new ChartSong(tempS, tempA, num));
+						line = br.readLine();
+					}
 				}else{
-					System.out.println("Line: " + line);
-					String part = line.split(Pattern.quote(". ("))[1];
-					System.out.println("Part: " + part);
-					String[] parts = part.split(Pattern.quote(" points) "));
-					int num = Integer.parseInt(parts[0]);
-					part = parts[1];
-					System.out.println("Part: " + part);
-					parts = part.split(Pattern.quote(" - "));
-					String tempS = parts[0];
-					String tempA = parts[1];
-					tempCS.Push(new ChartSong(tempS, tempA, num));
-					line = br.readLine();
+					afterInfo.Push(line);
+					br.readLine();
 				}
 			}
 			br.close();
@@ -266,6 +293,11 @@ public class Chart {
 					bw.newLine();
 				}
 				bw.write((i + 1) + ". (" + tempSong.getPoints() + " points) " + tempSong.getSongName() + " - " + tempSong.getArtistName());
+				bw.newLine();
+			}
+			bw.newLine();
+			for (int i = 0; i < afterInfo.getSize(); i++){
+				bw.write(afterInfo.GetValueAt(i));
 				bw.newLine();
 			}
 			bw.close();
