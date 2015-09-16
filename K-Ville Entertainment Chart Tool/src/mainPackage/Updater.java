@@ -44,11 +44,12 @@ public class Updater {
 				if (line.split("<->")[0].equals(this.projectName)){
 					this.remoteVersion = line.split("<->")[1];
 					break;
+				}else{
+					line = br.readLine();
 				}
 			}
 			br.close();
 		} catch (IOException e) { e.printStackTrace(); }
-		
 		if (!remoteVersion.equals(localVersion)){	// Update Available
 			int choice = JOptionPane.showConfirmDialog(null, "<html>An update to " + projectName + " is available.<br><br>Your version: " + localVersion + "<br>Latest version: " + remoteVersion + "<br><br>Would you like to download the latest version?", projectName + " Updater", JOptionPane.YES_NO_OPTION);
 			if (choice == JOptionPane.YES_OPTION){
@@ -92,11 +93,8 @@ public class Updater {
             }
             
             OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(downloadFile));
-            boolean success = ftpClient.retrieveFile(remoteFile, outputStream);
+            ftpClient.retrieveFile(remoteFile, outputStream);
             outputStream.close();
-            if (success) {
-                System.out.println("File has been downloaded successfully.");
-            }
 
         } catch (IOException ex) {
             ex.printStackTrace();
