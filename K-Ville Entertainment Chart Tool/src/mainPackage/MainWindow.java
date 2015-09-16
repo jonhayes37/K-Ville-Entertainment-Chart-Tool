@@ -52,7 +52,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private Chart chart = new Chart();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private static final String VERSION_NUMBER = "1.0";
+	private final String VERSION_NUMBER = "1.1";
 	private final String[] splitters = new String[]{"-","by","/","~","|"};
 	private final String[] titles = new String[]{"Video URL","Save Directory"};
 	private String artistChars = ";,?";
@@ -60,6 +60,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private JMenuBar menuBar = new JMenuBar();
 	private JMenu fileMenu = new JMenu("File");
 	private JMenuItem updateChartFile = new JMenuItem("Update Top 50 Chart");
+	private JMenuItem updateProgram = new JMenuItem("Check for Updates");
 	
 	// Window Creation
 	public MainWindow(){
@@ -68,7 +69,9 @@ public class MainWindow extends JFrame implements ActionListener{
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e3) { e3.printStackTrace();	}
 		
 		updateChartFile.addActionListener(this);
+		updateProgram.addActionListener(this);
 		fileMenu.add(updateChartFile);
+		fileMenu.add(updateProgram);
 		menuBar.add(fileMenu);
 		
 		pnlCentre = new JPanel();
@@ -107,6 +110,9 @@ public class MainWindow extends JFrame implements ActionListener{
         this.setSize(400,200);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
+        
+        Updater update = new Updater("K-Ville Entertainment Chart Tool", this.VERSION_NUMBER);
+		update.CheckVersion();
 	}
 	
 	// Action Listeners
@@ -140,6 +146,9 @@ public class MainWindow extends JFrame implements ActionListener{
 	            chart.UpdateChartFile(tempPath);
 	            JOptionPane.showMessageDialog(this, "Updated Top 50 Chart!", "Updated Chart", JOptionPane.INFORMATION_MESSAGE);
 	        }
+		}else if (e.getSource() == updateProgram){
+			Updater update = new Updater("K-Ville Entertainment Chart Tool", this.VERSION_NUMBER);
+			update.CheckVersion();
 		}
 	}
 	
