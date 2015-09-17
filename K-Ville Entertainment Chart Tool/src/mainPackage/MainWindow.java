@@ -459,7 +459,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private int ProcessPoints(String song, int line){
 		int lastNumIndex = 0;
 		int counter = 0;
-		if (Character.isDigit(song.charAt(0))){		// Number given
+		if (song.length() > 0 && Character.isDigit(song.charAt(0))){		// Number given
 			while (counter < song.length() && Character.isDigit(song.charAt(counter))){
 				lastNumIndex = counter;
 				counter++;
