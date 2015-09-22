@@ -106,6 +106,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		this.add(pnlMain);
 		this.setJMenuBar(menuBar);
 		this.setIconImage(new ImageIcon("icon.png").getImage());
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setTitle("K-Ville Entertainment Chart Tool v" + VERSION_NUMBER);
         this.setSize(400,200);
         this.setLocationRelativeTo(null);
