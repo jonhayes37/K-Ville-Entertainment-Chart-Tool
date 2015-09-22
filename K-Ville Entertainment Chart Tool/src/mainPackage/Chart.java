@@ -80,51 +80,62 @@ public class Chart {
 	// Processes chart to improve and amalgamate results
 	public void ProcessChart(JFrame parent){
 		// Checks all songs for reversed values (song is artist, artist is song; if so it combines their points and removes the duplicate
-		for (int i = 0; i < this.chartSongs.getSize() - 1; i++){
-			parent.setTitle("Processing Chart... (" + (int)((float)(i + 1) / chartSongs.getSize() * 100) + "%)");
-			for (int j = i + 1; j < this.chartSongs.getSize(); j++){
-				ChartSong s1 = this.chartSongs.GetValueAt(i);
-				ChartSong s2 = this.chartSongs.GetValueAt(j);
-				String song1 = s1.getSongName();
-				String song2 = s2.getSongName();
-				String artist1 = s1.getArtistName();
-				String artist2 = s2.getArtistName();
-				int comparison = AreStringsConnected(song1, song2, artist1, artist2);
-				if (comparison >= 0){
-					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-					this.combinedClosePts.Push(s1.getPoints());
-					this.combinedClosePts.Push(s2.getPoints());
-					int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
-					int minIndex = (maxIndex == i) ? j : i;
-					this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
-					this.chartSongs.RemoveAt(minIndex);
-				}else if ((SameCoreString(song1, song2) && (IsGGName(artist1) && IsGGName(artist2))) || (SameCoreString(song1, artist2) && (IsGGName(artist1) && IsGGName(song2)))){
-					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-					this.combinedClosePts.Push(s1.getPoints());
-					this.combinedClosePts.Push(s2.getPoints());
-					this.chartSongs.GetValueAt(i).setArtistName("girls generation");
-					this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
-					this.chartSongs.RemoveAt(j);
-				}else if ((SameCoreString(artist1, artist2) && (IsGGName(song1) && IsGGName(song2))) || (SameCoreString(song2, artist1) && (IsGGName(artist2) && IsGGName(song1)))){
-					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-					this.combinedClosePts.Push(s1.getPoints());
-					this.combinedClosePts.Push(s2.getPoints());
-					this.chartSongs.GetValueAt(i).setSongName("girls generation");
-					this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
-					this.chartSongs.RemoveAt(j);
-				}else if ((SameChars(song1,song2) && SameCoreString(artist1, artist2)) || (SameChars(artist1,artist2) && SameCoreString(song1, song2)) ||
-						(SameChars(song1,artist2) && SameCoreString(song2, artist1)) || (SameChars(artist1,song2) && SameCoreString(artist2, song1))){		// Checks if one set is the same without spaces
-					this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
-					this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
-					this.combinedClosePts.Push(s1.getPoints());
-					this.combinedClosePts.Push(s2.getPoints());
-					int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
-					int minIndex = (maxIndex == i) ? j : i;
-					this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
-					this.chartSongs.RemoveAt(minIndex);
+		for (int k = 0; k < 3; k++){	//Processes 3 times to be sure to catch outliers
+			for (int i = 0; i < this.chartSongs.getSize() - 1; i++){
+				parent.setTitle("Processing Chart... (" + (int)((float)(i + 1) / chartSongs.getSize() * 33 * (k + 1)) + "%)");
+				for (int j = i + 1; j < this.chartSongs.getSize(); j++){
+					ChartSong s1 = this.chartSongs.GetValueAt(i);
+					ChartSong s2 = this.chartSongs.GetValueAt(j);
+					String song1 = s1.getSongName();
+					String song2 = s2.getSongName();
+					String artist1 = s1.getArtistName();
+					String artist2 = s2.getArtistName();
+					int comparison = AreStringsConnected(song1, song2, artist1, artist2);
+					if (comparison >= 0){
+						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+						this.combinedClosePts.Push(s1.getPoints());
+						this.combinedClosePts.Push(s2.getPoints());
+						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
+						int minIndex = (maxIndex == i) ? j : i;
+						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
+						this.chartSongs.RemoveAt(minIndex);
+					}else if ((SameCoreString(song1, song2) && (IsGGName(artist1) && IsGGName(artist2))) || (SameCoreString(song1, artist2) && (IsGGName(artist1) && IsGGName(song2)))){
+						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+						this.combinedClosePts.Push(s1.getPoints());
+						this.combinedClosePts.Push(s2.getPoints());
+						this.chartSongs.GetValueAt(i).setArtistName("girls generation");
+						this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
+						this.chartSongs.RemoveAt(j);
+					}else if ((SameCoreString(artist1, artist2) && (IsGGName(song1) && IsGGName(song2))) || (SameCoreString(song2, artist1) && (IsGGName(artist2) && IsGGName(song1)))){
+						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+						this.combinedClosePts.Push(s1.getPoints());
+						this.combinedClosePts.Push(s2.getPoints());
+						this.chartSongs.GetValueAt(i).setSongName("girls generation");
+						this.chartSongs.GetValueAt(i).AddPoints(this.chartSongs.GetValueAt(j).getPoints());
+						this.chartSongs.RemoveAt(j);
+					}else if ((SameChars(song1,song2) && SameCoreString(artist1, artist2)) || (SameChars(artist1,artist2) && SameCoreString(song1, song2)) ||
+							(SameChars(song1,artist2) && SameCoreString(song2, artist1)) || (SameChars(artist1,song2) && SameCoreString(artist2, song1))){		// Checks if one set is the same without spaces
+						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+						this.combinedClosePts.Push(s1.getPoints());
+						this.combinedClosePts.Push(s2.getPoints());
+						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
+						int minIndex = (maxIndex == i) ? j : i;
+						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
+						this.chartSongs.RemoveAt(minIndex);
+					}else if (CombinedContainsBoth(song1, song2, artist1, artist2)){
+						this.combinedCloseMatches.Push(s1.getSongName() + " - " + s1.getArtistName());
+						this.combinedCloseMatches.Push(s2.getSongName() + " - " + s2.getArtistName());
+						this.combinedClosePts.Push(s1.getPoints());
+						this.combinedClosePts.Push(s2.getPoints());
+						int maxIndex = (this.chartSongs.GetValueAt(i).getPoints() > this.chartSongs.GetValueAt(j).getPoints()) ? i : j;
+						int minIndex = (maxIndex == i) ? j : i;
+						this.chartSongs.GetValueAt(maxIndex).AddPoints(this.chartSongs.GetValueAt(minIndex).getPoints());
+						this.chartSongs.RemoveAt(minIndex);
+					}
 				}
 			}
 		}
@@ -230,9 +241,54 @@ public class Chart {
 			return 1;
 		}else if (SameCoreString(s1,a2) && SameCoreString(s2,a1)){
 			return 0;
+		}else if (SameCoreString(s1,s2) && SameWithTypo(a1,a2)){
+			System.out.println(a1 + " & " + a2 + " are similar enough to be combined.");
+			return 1;
+		}else if (SameCoreString(s1,a2) && SameWithTypo(s2,a1)){
+			System.out.println(s2 + " & " + a1 + " are similar enough to be combined.");
+			return 0;
+		}else if (SameCoreString(a1,a2) && SameWithTypo(s1,s2)){
+			System.out.println(s1 + " & " + s2 + " are similar enough to be combined.");
+			return 1;
+		}else if (SameCoreString(s2,a1) && SameWithTypo(a1,s2)){
+			System.out.println(a1 + " & " + s2 + " are similar enough to be combined.");
+			return 0;
 		}else{
 			return -1;
 		}
+	}
+	
+	// Returns true if one string is mostly a substring of the other
+	private boolean SameWithTypo(String str1, String str2){
+		int biggestSubstring = 0;
+		double proportion1 = 0, proportion2 = 0;
+		String biggerString = (str1.length() > str2.length()) ? str1 : str2 ;
+		String smallerString = (str1.length() > str2.length()) ? str2 : str1 ;
+		int diffInLength = biggerString.length() - smallerString.length();
+		if (smallerString.length() > 2 && (diffInLength / (double)smallerString.length()) < 1){	// Do not combine very short strings or ones that are very different in length; they'll get picked up by the combined feature
+			for (int i = 0; i < smallerString.length(); i++){
+				for (int j = 0; j < smallerString.length() - i; j++){
+					String subString = smallerString.substring(j, j + i + 1);
+					if (biggerString.contains(subString)){
+						biggestSubstring = subString.length();
+						break;
+					}
+				}
+			}
+			proportion1 = biggestSubstring / (double)smallerString.length();
+		
+			for (int i = 0; i < smallerString.length(); i++){
+				for (int j = 0; j < biggerString.length() - i; j++){
+					String subString = biggerString.substring(j, j + i + 1);
+					if (smallerString.contains(subString)){
+						biggestSubstring = subString.length();
+						break;
+					}
+				}
+			}
+			proportion2 = biggestSubstring / smallerString.length();
+		}
+		return Math.max(proportion1, proportion2) > 0.5;
 	}
 	
 	// Returns true if the two strings have nearly the same character sequence without spaces
@@ -244,6 +300,21 @@ public class Chart {
 		}else{
 			return false;
 		}
+	}
+	
+	// Returns true if one of the combined strings contains both of the other strings
+	private boolean CombinedContainsBoth(String s1, String s2, String a1, String a2){
+		String combined = s1 + a1;
+		if (combined.contains(s2) && combined.contains(a2)){
+			System.out.println(combined + " contains both " + s2 + " & " + a2);
+			return true;
+		}
+		combined = s2 + a2;
+		if (combined.contains(s1) && combined.contains(a1)){
+			System.out.println(combined + " contains both " + s1 + " & " + a1);
+			return true;
+		}
+		return false;
 	}
 	
 	public void UpdateChartFile(String path){

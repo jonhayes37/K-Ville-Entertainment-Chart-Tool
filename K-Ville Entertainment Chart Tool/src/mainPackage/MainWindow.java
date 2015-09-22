@@ -36,7 +36,7 @@ import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
-
+// TODO Changes: now comes to front when done
 public class MainWindow extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 414975340316732097L;
@@ -52,8 +52,8 @@ public class MainWindow extends JFrame implements ActionListener{
 	private Chart chart = new Chart();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private final String VERSION_NUMBER = "1.1.1";
-	private final String[] splitters = new String[]{"-","by","/","~","|"};
+	private final String VERSION_NUMBER = "1.1.2";
+	private final String[] splitters = new String[]{"-","by","/","~","|","--"};
 	private final String[] titles = new String[]{"Video URL","Save Directory"};
 	private String artistChars = ";,?";
 	private String songChars = "-1023456789.);?,";
@@ -163,6 +163,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		this.setTitle("Creating Files...");
 		chart.CreateChart();			// File creation
 		this.setTitle("Done!");
+		this.toFront();
 		JOptionPane.showMessageDialog(this, "Finished generation!", "Finished", JOptionPane.INFORMATION_MESSAGE);
 	}
 	
@@ -307,7 +308,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	
 	// Processes a line involving a song rank
 	private boolean ProcessLine(String line, int lineNum, int attemptNum){
-		if (line.toLowerCase().contains("k-ville entertainment")){	// Don't count this properly formatted line
+		if (line.toLowerCase().contains("k-ville entertainment") || (line.toLowerCase().contains("http") && line.toLowerCase().contains("://"))){	// Don't count this properly formatted line
 			return false;
 		}
 		String[] parts = line.split(splitters[attemptNum]);
