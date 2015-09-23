@@ -36,7 +36,7 @@ import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
-// TODO Changes: now comes to front when done
+
 public class MainWindow extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 414975340316732097L;
@@ -164,7 +164,6 @@ public class MainWindow extends JFrame implements ActionListener{
 		this.setTitle("Creating Files...");
 		chart.CreateChart();			// File creation
 		this.setTitle("Done!");
-		this.toFront();
 		JOptionPane.showMessageDialog(this, "Finished generation!", "Finished", JOptionPane.INFORMATION_MESSAGE);
 	}
 	

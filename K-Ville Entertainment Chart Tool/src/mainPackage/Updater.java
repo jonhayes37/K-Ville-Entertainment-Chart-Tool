@@ -49,7 +49,10 @@ public class Updater {
 				}
 			}
 			br.close();
-		} catch (IOException e) { e.printStackTrace(); }
+		} catch (IOException e) { 
+			JOptionPane.showMessageDialog(null, "Could not read the latest version file.", "File Read Error", JOptionPane.ERROR_MESSAGE);
+			e.printStackTrace(); 
+		}
 		if (!remoteVersion.equals(localVersion)){	// Update Available
 			int choice = JOptionPane.showConfirmDialog(null, "<html>An update to " + projectName + " is available.<br><br>Your version: " + localVersion + "<br>Latest version: " + remoteVersion + "<br><br>Would you like to download the latest version?", projectName + " Updater", JOptionPane.YES_NO_OPTION);
 			if (choice == JOptionPane.YES_OPTION){
@@ -83,7 +86,6 @@ public class Updater {
 	private void FTPDownload(boolean checking){
         FTPClient ftpClient = new FTPClient();
         try {
- 
             ftpClient.connect(FTP_SERVER, FTP_PORT);
             ftpClient.login(FTP_USERNAME, FTP_PASSWORD);
             ftpClient.enterLocalPassiveMode();
@@ -104,7 +106,9 @@ public class Updater {
             outputStream.close();
 
         } catch (IOException ex) {
-            ex.printStackTrace();
+        	String fileName = (checking) ? "latest version" : "new version";
+        	JOptionPane.showMessageDialog(null, "Could not retrieve the " + fileName + " file.", "FTP Error", JOptionPane.ERROR_MESSAGE);
+        	ex.printStackTrace();
         } finally {
             try {
                 if (ftpClient.isConnected()) {
@@ -112,6 +116,7 @@ public class Updater {
                     ftpClient.disconnect();
                 }
             } catch (IOException ex) {
+            	JOptionPane.showMessageDialog(null, "Could not close the active FTP connection.", "FTP Error", JOptionPane.ERROR_MESSAGE);
                 ex.printStackTrace();
             }
         }
@@ -145,7 +150,10 @@ public class Updater {
                 entry = zipIn.getNextEntry();
             }
             zipIn.close();  		
-	    }catch(IOException ex){ ex.printStackTrace(); }
+	    }catch(IOException ex){ 
+	    	JOptionPane.showMessageDialog(null, "Could not extract the new version's file.", "Unzip Error", JOptionPane.ERROR_MESSAGE);
+	    	ex.printStackTrace(); 
+	    }
 	}
 
 	// Extracts a file from a zip folder
