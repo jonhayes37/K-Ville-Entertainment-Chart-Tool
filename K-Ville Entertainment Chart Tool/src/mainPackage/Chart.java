@@ -242,16 +242,12 @@ public class Chart {
 		}else if (SameCoreString(s1,a2) && SameCoreString(s2,a1)){
 			return 0;
 		}else if (SameCoreString(s1,s2) && SameWithTypo(a1,a2)){
-			System.out.println(a1 + " & " + a2 + " are similar enough to be combined.");
 			return 1;
 		}else if (SameCoreString(s1,a2) && SameWithTypo(s2,a1)){
-			System.out.println(s2 + " & " + a1 + " are similar enough to be combined.");
 			return 0;
 		}else if (SameCoreString(a1,a2) && SameWithTypo(s1,s2)){
-			System.out.println(s1 + " & " + s2 + " are similar enough to be combined.");
 			return 1;
 		}else if (SameCoreString(s2,a1) && SameWithTypo(a1,s2)){
-			System.out.println(a1 + " & " + s2 + " are similar enough to be combined.");
 			return 0;
 		}else{
 			return -1;
@@ -306,12 +302,10 @@ public class Chart {
 	private boolean CombinedContainsBoth(String s1, String s2, String a1, String a2){
 		String combined = s1 + a1;
 		if (combined.contains(s2) && combined.contains(a2)){
-			System.out.println(combined + " contains both " + s2 + " & " + a2);
 			return true;
 		}
 		combined = s2 + a2;
 		if (combined.contains(s1) && combined.contains(a1)){
-			System.out.println(combined + " contains both " + s1 + " & " + a1);
 			return true;
 		}
 		return false;

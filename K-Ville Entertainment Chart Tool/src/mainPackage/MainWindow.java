@@ -36,7 +36,7 @@ import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
-
+// TODO Improve JSON Error 500 frequency, improve failed comment parser
 public class MainWindow extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 414975340316732097L;
@@ -205,7 +205,12 @@ public class MainWindow extends JFrame implements ActionListener{
                 	
                 	// Adding the main comment to the list
                 	CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
-                    comments.add(snippet.getTextDisplay());
+                	String author = snippet.getAuthorDisplayName().toLowerCase(); 
+                	if (author.equals("k-ville entertainment")){
+                		System.out.println("Comment skipped - Author is " + author);
+                	}else{
+                		comments.add(snippet.getTextDisplay());
+                	}
                     
                     // Starting a search for replies
                 	CommentListResponse commentsListResponse = youtube.comments().list("snippet").setParentId(videoComment.getId()).setTextFormat("plainText").execute();
@@ -215,7 +220,12 @@ public class MainWindow extends JFrame implements ActionListener{
 	                        for (Comment commentReply : comms) {
 	                        	j++;
                         		CommentSnippet snip = commentReply.getSnippet();
-                                comments.add(snip.getTextDisplay());
+                        		author = snip.getAuthorDisplayName().toLowerCase();
+                        		if (author.equals("k-ville entertainment")){
+                            		System.out.println("Comment skipped - Author is " + author);
+                            	}else{
+                            		comments.add(snippet.getTextDisplay());
+                            	}
 	                        }
 	                    }
                     }
@@ -241,7 +251,12 @@ public class MainWindow extends JFrame implements ActionListener{
 		for (int i = 0; i < comments.size(); i++){
 			String comment = comments.get(i);
 			comment = comment.substring(0, comment.length() - 1); // Removes "?" at the end of each comment
-			ArrayList<Integer> failedLines = ProcessComment(comment.split("\n"));	// Processes each line of the comment
+			String[] commentLines = comment.split("\n");
+			if (commentLines.length > 0 && commentLines[0].toLowerCase().equals("+k-ville entertainment")){
+				System.out.println("Removing a k-ville tagged line");
+				commentLines = Arrays.copyOfRange(commentLines, 1, commentLines.length);
+			}
+			ArrayList<Integer> failedLines = ProcessComment(commentLines);	// Processes each line of the comment
 			if (failedLines.size() > 0 && comment.split("\n").length - failedLines.size() < 2){	// If all but 1 lines in the comment failed, ignores the comment
 				tempSongs = new ArrayList<ChartSong>();
 			}
@@ -353,7 +368,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			tempSongs.add(new ChartSong(song, artist, points));
 			return true;
 		}else if (parts.length == 3 && attemptNum == 0){		// One too many -'s (could be band name) 1. t-ara - so crazy     1. so crazy - t-ara
-			if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
+			if (RemoveAllSpaces(line.toLowerCase()).contains("t-ara") || RemoveAllSpaces(line.toLowerCase()).contains("g-d") || RemoveAllSpaces(line.toLowerCase()).contains("g-dragon") || RemoveAllSpaces(line.toLowerCase()).contains("g-friend")){	// Special case processing
 				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
 					song = ProcessSongName(parts[0]);
 					artist = ProcessArtist(parts[1] + "-" + parts[2]);
@@ -366,24 +381,14 @@ public class MainWindow extends JFrame implements ActionListener{
 					points = ProcessPoints(parts[0], lineNum);
 					tempSongs.add(new ChartSong(song, artist, points));
 					return true;
-				}else{	// Failed Parse
-					return false;
-				}
-			}else if (line.toLowerCase().contains("ah-ah")){ 	// Special case for ah-ah
-				if (parts[0].toLowerCase().contains("ah") && parts[1].toLowerCase().contains("ah")){
-					song = ProcessSongName(parts[0] + "-" + parts[1]);
+				}else if (parts[0].length() > 0 && (parts[0].length() < 2 && Character.isDigit(parts[0].charAt(0)) || parts[0].equals("10"))){ // Format of 1- [artist] - [song]
+					song = ProcessSongName(parts[1]);
 					artist = ProcessArtist(parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
 					tempSongs.add(new ChartSong(song, artist, points));
 					return true;
-				}else if (parts[1].toLowerCase().contains("ah") && parts[2].toLowerCase().contains("ah")){
-					song = ProcessSongName(parts[1] + "-" + parts[2]);
-					artist = ProcessArtist(parts[0]);
-					points = ProcessPoints(parts[0], lineNum);
-					tempSongs.add(new ChartSong(song, artist, points));
-					return true;
-				}else{
-					return false;	// Failed parse
+				}else{	// Failed Parse
+					return false;
 				}
 			}else if (IsDigits(parts[0])){	// Format of 1- song - artist
 				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
@@ -495,6 +500,20 @@ public class MainWindow extends JFrame implements ActionListener{
 		}
 		while (tempStr.length() > 0 && tempStr.substring(0,1).equals(" ")){	// Removes spaces at the beginning of the name
 			tempStr = tempStr.substring(1, tempStr.length());
+		}
+		return tempStr;
+	}
+	
+	// Removes all spaces from a string
+	private String RemoveAllSpaces(String str){
+		String tempStr = RemoveSpaces(str);
+		if (tempStr.length() < 1){
+			return str;
+		}
+		for (int i = tempStr.length() - 1; i >= 0; i--){
+			if (tempStr.charAt(i) == ' '){
+				tempStr = tempStr.substring(0, i) + tempStr.substring(i + 1, tempStr.length());
+			}
 		}
 		return tempStr;
 	}
