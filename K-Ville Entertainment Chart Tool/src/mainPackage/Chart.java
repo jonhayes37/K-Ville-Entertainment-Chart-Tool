@@ -231,23 +231,29 @@ public class Chart {
 	
 	// Returns true if the strings are equal or if one contains the other
 	private boolean SameCoreString(String s1, String s2){
-		return (s1.equals(s2) || s1.contains(s2) || s2.contains(s1));
+		return (s1.equals(s2) || (s1.contains(s2) && s2.length() > 2) || (s2.contains(s1) && s1.length() > 2));
 	}
 	
 	// Returns 1 if the two items can be combined normally, 0 if they can be combined oppositely,
 	// and -1 if they cannot be combined
 	private int AreStringsConnected(String s1, String s2, String a1, String a2){
 		if (SameCoreString(s1,s2) && SameCoreString(a1,a2)){
+			System.out.println("1) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 1;
 		}else if (SameCoreString(s1,a2) && SameCoreString(s2,a1)){
+			System.out.println("2) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 0;
 		}else if (SameCoreString(s1,s2) && SameWithTypo(a1,a2)){
+			System.out.println("3) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 1;
 		}else if (SameCoreString(s1,a2) && SameWithTypo(s2,a1)){
+			System.out.println("4) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 0;
 		}else if (SameCoreString(a1,a2) && SameWithTypo(s1,s2)){
+			System.out.println("5) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 1;
-		}else if (SameCoreString(s2,a1) && SameWithTypo(a1,s2)){
+		}else if (SameCoreString(s2,a1) && SameWithTypo(a2,s1)){
+			System.out.println("6) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 0;
 		}else{
 			return -1;
@@ -284,7 +290,7 @@ public class Chart {
 			}
 			proportion2 = biggestSubstring / smallerString.length();
 		}
-		return Math.max(proportion1, proportion2) > 0.5;
+		return Math.max(proportion1, proportion2) > 0.6;
 	}
 	
 	// Returns true if the two strings have nearly the same character sequence without spaces
