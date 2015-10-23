@@ -9,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -36,7 +37,7 @@ import com.google.api.services.youtube.model.CommentSnippet;
 import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
-// TODO Improve JSON Error 500 frequency, improve failed comment parser
+// TODO Improve failed comment parser
 public class MainWindow extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 414975340316732097L;
@@ -50,6 +51,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private String videoURL = "";
 	private static YouTube youtube;
 	private Chart chart = new Chart();
+	private HashMap<String,String> authorComms = new HashMap<String,String>();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
 	private final String VERSION_NUMBER = "1.1.2";
@@ -206,30 +208,50 @@ public class MainWindow extends JFrame implements ActionListener{
                 	// Adding the main comment to the list
                 	CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
                 	String author = snippet.getAuthorDisplayName().toLowerCase(); 
-                	if (author.equals("k-ville entertainment")){
+                	if (author.toLowerCase().contains("k-ville")){
                 		System.out.println("Comment skipped - Author is " + author);
                 	}else{
-                		comments.add(snippet.getTextDisplay());
+                		if (!authorComms.keySet().contains(author)){	// Author has not made a comment yet
+                			authorComms.put(author, snippet.getTextDisplay());
+                		}else if (authorComms.keySet().contains(author) && !snippet.getTextDisplay().equals(authorComms.get(author))){		// If a different comment is stored, only keep the longest one
+                			if (snippet.getTextDisplay().length() > authorComms.get(author).length()){
+                				authorComms.put(author, snippet.getTextDisplay());
+                			}
+                			System.out.println("New comment longer than old comment");
+                		}
                 	}
                     
-                    // Starting a search for replies
-                	CommentListResponse commentsListResponse = youtube.comments().list("snippet").setParentId(videoComment.getId()).setTextFormat("plainText").execute();
-                	if (!commentsListResponse.isEmpty()){
-	                    List<Comment> comms = commentsListResponse.getItems();
-	                    if (!comms.isEmpty()){
-	                        for (Comment commentReply : comms) {
-	                        	j++;
-                        		CommentSnippet snip = commentReply.getSnippet();
-                        		author = snip.getAuthorDisplayName().toLowerCase();
-                        		if (author.equals("k-ville entertainment")){
-                            		System.out.println("Comment skipped - Author is " + author);
-                            	}else{
-                            		comments.add(snippet.getTextDisplay());
-                            	}
-	                        }
+                	if (videoComment.getSnippet().getTotalReplyCount() > 0){
+	                    // Starting a search for replies
+	                	CommentListResponse commentsListResponse = youtube.comments().list("snippet").setParentId(videoComment.getId()).setTextFormat("plainText").execute();
+	                	if (!commentsListResponse.isEmpty()){
+		                    List<Comment> comms = commentsListResponse.getItems();
+		                    if (!comms.isEmpty()){
+		                        for (Comment commentReply : comms) {
+		                        	j++;
+	                        		CommentSnippet snip = commentReply.getSnippet();
+	                        		author = snip.getAuthorDisplayName().toLowerCase();
+	                        		if (author.toLowerCase().contains("k-ville")){
+	                            		System.out.println("Reply skipped - Author is " + author);
+	                            	}else{
+	                            		if (!authorComms.keySet().contains(author)){	// Author has not made a comment yet
+	                            			authorComms.put(author, snip.getTextDisplay());
+	                            		}else if (authorComms.keySet().contains(author) && !snip.getTextDisplay().equals(authorComms.get(author))){		// If a different comment is stored, only keep the longest one
+	                            			if (snippet.getTextDisplay().length() > authorComms.get(author).length()){
+	                            				authorComms.put(author, snip.getTextDisplay());
+	                            			}
+	                            			System.out.println("New reply longer than old comment");
+	                            		}
+	                            	}
+		                        }
+		                    }
 	                    }
-                    }
+                	}
                 	i++;
+                }
+                
+                for (String auth : authorComms.keySet()){	// Adding all comments to the comment list
+                	comments.add(authorComms.get(auth));
                 }
                 System.out.println(j + " replies added. There are " + comments.size() + " comments to process.");
                 commentList = comments;
@@ -250,7 +272,7 @@ public class MainWindow extends JFrame implements ActionListener{
 	private void ProcessComments(ArrayList<String> comments){
 		for (int i = 0; i < comments.size(); i++){
 			String comment = comments.get(i);
-			comment = comment.substring(0, comment.length() - 1); // Removes "?" at the end of each comment
+			comment = comment.substring(0, comment.length()); // Removes "?" at the end of each comment
 			String[] commentLines = comment.split("\n");
 			if (commentLines.length > 0 && commentLines[0].toLowerCase().equals("+k-ville entertainment")){
 				System.out.println("Removing a k-ville tagged line");
@@ -266,7 +288,9 @@ public class MainWindow extends JFrame implements ActionListener{
 			for (int j = 0; j < tempSongs.size(); j++){		
 				tempSongs.get(j).setArtistName(RemoveSpaces(tempSongs.get(j).getArtistName().toLowerCase()));
 				tempSongs.get(j).setSongName(RemoveSpaces(tempSongs.get(j).getSongName().toLowerCase()));
-				chart.AddValue(tempSongs.get(j));
+				if (tempSongs.get(j).getPoints() > 0){	// Avoids strange negative point errors
+					chart.AddValue(tempSongs.get(j));
+				}
 			}
 			if (failedLines.size() > 0){	// If lines failed, adds them to the list of failed parses
 				chart.AddFailedParse(comment, failedLines);
@@ -368,7 +392,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			tempSongs.add(new ChartSong(song, artist, points));
 			return true;
 		}else if (parts.length == 3 && attemptNum == 0){		// One too many -'s (could be band name) 1. t-ara - so crazy     1. so crazy - t-ara
-			if (RemoveAllSpaces(line.toLowerCase()).contains("t-ara") || RemoveAllSpaces(line.toLowerCase()).contains("g-d") || RemoveAllSpaces(line.toLowerCase()).contains("g-dragon") || RemoveAllSpaces(line.toLowerCase()).contains("g-friend")){	// Special case processing
+			if (RemoveAllSpaces(line.toLowerCase()).contains("twenty-three") || RemoveAllSpaces(line.toLowerCase()).contains("t-ara") || RemoveAllSpaces(line.toLowerCase()).contains("g-d") || RemoveAllSpaces(line.toLowerCase()).contains("g-dragon") || RemoveAllSpaces(line.toLowerCase()).contains("g-friend") || RemoveAllSpaces(line.toLowerCase()).contains("a-daily") || RemoveAllSpaces(line.toLowerCase()).contains("ah-choo") || RemoveAllSpaces(line.toLowerCase()).contains("pungdeng-e")){	// Special case processing
 				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
 					song = ProcessSongName(parts[0]);
 					artist = ProcessArtist(parts[1] + "-" + parts[2]);
@@ -406,7 +430,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		}else if (parts.length == 4){	// 4 -'s > could be 1- song	- ar-tist
 			if (IsDigits(parts[0])){	// Format of 1- song artist
 				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
-					if (line.toLowerCase().contains("t-ara") || line.toLowerCase().contains("g-d") ||line.toLowerCase().contains("g-dragon") || line.toLowerCase().contains("g-friend")){	// Special case processing
+					if (RemoveAllSpaces(line.toLowerCase()).contains("twenty-three") || RemoveAllSpaces(line.toLowerCase()).contains("t-ara") || RemoveAllSpaces(line.toLowerCase()).contains("g-d") || RemoveAllSpaces(line.toLowerCase()).contains("g-dragon") || RemoveAllSpaces(line.toLowerCase()).contains("ah-choo") || RemoveAllSpaces(line.toLowerCase()).contains("g-friend") || RemoveAllSpaces(line.toLowerCase()).contains("a-daily") || RemoveAllSpaces(line.toLowerCase()).contains("pungdeng-e")){	// Special case processing
 						if (parts[2].length() < 3){		// Format of "1- so crazy - t-ara"
 							song = ProcessSongName(parts[1]);
 							artist = ProcessArtist(parts[2] + "-" + parts[3]);
@@ -449,13 +473,13 @@ public class MainWindow extends JFrame implements ActionListener{
 	// Process an artist
 	private String ProcessArtist(String artist){
 		String tempArt = RemoveSpaces(artist);
-		while (artistChars.contains(tempArt.substring(tempArt.length() - 1))){	// Removing unwanted characters at the end
+		while (tempArt.length() > 1 && artistChars.contains(tempArt.substring(tempArt.length() - 1))){	// Removing unwanted characters at the end
 			tempArt = tempArt.substring(0, tempArt.length() - 1);
 		}
 		if (tempArt.split(" ").length > 1 && tempArt.split(" ")[0].length() > 0 && Character.isDigit(tempArt.split(" ")[0].charAt(0))){	// format of "1. artist song"
 			tempArt = CombineRestOfParts(tempArt.split(" "), 0);
 		}
-		while (artistChars.contains(tempArt.substring(0,1))){	// Removing unwanted characters at the beginning
+		while (tempArt.length() > 1 && artistChars.contains(tempArt.substring(0,1))){	// Removing unwanted characters at the beginning
 			tempArt = tempArt.substring(1, tempArt.length());
 		}
 		return tempArt.toLowerCase();
