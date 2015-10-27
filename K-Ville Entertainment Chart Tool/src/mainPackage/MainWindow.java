@@ -3,7 +3,6 @@ package mainPackage;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -11,12 +10,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -25,7 +26,6 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
-import javax.swing.border.TitledBorder;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -38,25 +38,25 @@ import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
 // TODO Improve failed comment parser
+// TODO DONE File now saved in working directory
+// TODO DONE Simplified UI, cut back on variables
 public class MainWindow extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 414975340316732097L;
 	private JPanel pnlMain;
 	private JPanel pnlCentre;
-	private JPanel[] pnlRows = new JPanel[2];
 	private JTextField[] txtRows = new JTextField[2];
-	private JButton btnBrowse = new JButton("Browse");
 	private JButton btnGenerate = new JButton("Generate Chart Totals");
-	private String savePath = "";
+	private JLabel lblURL = new JLabel("Video URL:");
 	private String videoURL = "";
 	private static YouTube youtube;
 	private Chart chart = new Chart();
 	private HashMap<String,String> authorComms = new HashMap<String,String>();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private final String VERSION_NUMBER = "1.1.2";
-	private final String[] splitters = new String[]{"-","by","/","~","|","--"};
-	private final String[] titles = new String[]{"Video URL","Save Directory"};
+	private final String VERSION_NUMBER = "1.2";
+	private final String[] splitters = new String[]{"-","–","by","/","~","|","--"};
+	private final String[] hyphenStrings = new String[]{"make-up","twenty-three","t-ara","g-d","g-dragon","g-friend","a-daily","ah-choo","pungdeng-e"};
 	private String artistChars = ";,?";
 	private String songChars = "-1023456789.);?,";
 	private JMenuBar menuBar = new JMenuBar();
@@ -75,33 +75,22 @@ public class MainWindow extends JFrame implements ActionListener{
 		fileMenu.add(updateChartFile);
 		fileMenu.add(updateProgram);
 		menuBar.add(fileMenu);
+		menuBar.setBorder(BorderFactory.createMatteBorder(0,0,1,0,Color.GRAY));
 		
 		pnlCentre = new JPanel();
-		pnlCentre.setLayout(new GridLayout(2,1,0,5));
-		pnlCentre.setBorder(BorderFactory.createEmptyBorder(0,0,10,0));
-		btnBrowse.addActionListener(this);
-		btnGenerate.addActionListener(this);
+		pnlCentre.setLayout(new BorderLayout());
+		pnlCentre.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 		
-		for (int i = 0; i < 2; i++){
-			txtRows[i] = new JTextField();
-			txtRows[i].setBorder(BorderFactory.createLineBorder(Color.GRAY));
-			txtRows[i].setFont(new Font("Arial", Font.PLAIN, 12));
-			
-			pnlRows[i] = new JPanel();
-			pnlRows[i].setLayout(new BorderLayout());
-			TitledBorder title = new TitledBorder(BorderFactory.createEmptyBorder(), titles[i]);
-			title.setTitleJustification(TitledBorder.LEFT);
-			pnlRows[i].setBorder(title);
-		}
-		pnlRows[0].add(txtRows[0]);
-		pnlRows[1].add(txtRows[1]);
-		pnlRows[1].add(btnBrowse, BorderLayout.EAST);
-		pnlCentre.add(pnlRows[0]);
-		pnlCentre.add(pnlRows[1]);
+		btnGenerate.addActionListener(this);
+		txtRows[0] = new JTextField();
+		txtRows[0].setBorder(BorderFactory.createLineBorder(Color.GRAY));
+		txtRows[0].setFont(new Font("Arial", Font.PLAIN, 12));
+		pnlCentre.add(txtRows[0]);
 		
 		pnlMain = new JPanel();
 		pnlMain.setLayout(new BorderLayout());
 		pnlMain.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+		pnlMain.add(lblURL, BorderLayout.NORTH);
 		pnlMain.add(pnlCentre);
 		pnlMain.add(btnGenerate, BorderLayout.SOUTH);
 		
@@ -110,7 +99,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		this.setIconImage(new ImageIcon("icon.png").getImage());
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setTitle("K-Ville Entertainment Chart Tool v" + VERSION_NUMBER);
-        this.setSize(400,200);
+        this.setSize(390,152);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
         
@@ -120,24 +109,14 @@ public class MainWindow extends JFrame implements ActionListener{
 	
 	// Action Listeners
 	public void actionPerformed(ActionEvent e) {
-		if (e.getSource() == btnBrowse){			// Browse for Save Directory 
-			JFileChooser opener = new JFileChooser();
-			opener.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-	        int ret = opener.showDialog(this, "Choose a Directory");
-	        if(ret == JFileChooser.APPROVE_OPTION){    // On selection, displays and sets path
-	            savePath = opener.getSelectedFile().getPath();
-	            txtRows[1].setText(savePath);
-	            txtRows[1].setCaretPosition(0);
-	        }
-		}else if (e.getSource() == btnGenerate){	// Generate the Chart and text file
-			if (txtRows[0].getText().length() < 2 || txtRows[1].getText().length() < 2){
-				JOptionPane.showMessageDialog(this, "Required information not set. Make sure to specify the video URL and save directory.", "Missing Information", JOptionPane.ERROR_MESSAGE);
+		if (e.getSource() == btnGenerate){	// Generate the Chart and text file
+			if (txtRows[0].getText().length() < 2){
+				JOptionPane.showMessageDialog(this, "Invalid URL.", "Missing URL", JOptionPane.ERROR_MESSAGE);
 			}else{
 				videoURL = txtRows[0].getText();
 				if (videoURL.split("=").length > 1){	// If full URL is included, gets ID portion
 					videoURL = videoURL.split("=")[1];
 				}
-				chart = new Chart(savePath);
 				GenerateChart();
 				this.setTitle("K-Ville Entertainment Chart Tool v" + VERSION_NUMBER);
 			}
@@ -157,14 +136,15 @@ public class MainWindow extends JFrame implements ActionListener{
 	
 	// Generates the Chart and corresponding files from the video's comments
 	private void GenerateChart(){
-		this.setTitle("Fetching YouTube comments...");
+		chart = new Chart();
+		this.setTitle("Establishing Connection...");
 		FetchComments();				// Fetch comments from YouTube
-		this.setTitle("Processing comments...");
+		this.setTitle("Processing Comments...");
 		ProcessComments(commentList);	// Process fetched comments and add them to the Chart
-		this.setTitle("Processing chart...");
+		this.setTitle("Processing Chart...");
 		chart.ProcessChart(this);			// Chart processing to reduce manual post-editing
 		this.setTitle("Creating Files...");
-		chart.CreateChart();			// File creation
+		chart.CreateChart(System.getProperty("user.dir"));			// File creation
 		this.setTitle("Done!");
 		JOptionPane.showMessageDialog(this, "Finished generation!", "Finished", JOptionPane.INFORMATION_MESSAGE);
 	}
@@ -203,21 +183,21 @@ public class MainWindow extends JFrame implements ActionListener{
             	int i = 0;
             	int j = 0;
                 for (CommentThread videoComment : videoComments) {
-                	this.setTitle("Fetching YouTube replies (" + (int)((i + 1) / (float)videoComments.size() * 100) + "%)");
+                	this.setTitle("Fetching YouTube Comments (" + (int)((i + 1) / (float)videoComments.size() * 100) + "%)");
                 	
                 	// Adding the main comment to the list
                 	CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
                 	String author = snippet.getAuthorDisplayName().toLowerCase(); 
-                	if (author.toLowerCase().contains("k-ville")){
-                		System.out.println("Comment skipped - Author is " + author);
-                	}else{
+                	if (snippet.getTextDisplay().contains("1. I – Taeyeon feat. Verbal Jint\n2. Dumb Dumb – Red Velvet")){
+        				System.out.println("Author: " + author);
+        			}
+                	if (!author.toLowerCase().contains("k-ville")){
                 		if (!authorComms.keySet().contains(author)){	// Author has not made a comment yet
                 			authorComms.put(author, snippet.getTextDisplay());
                 		}else if (authorComms.keySet().contains(author) && !snippet.getTextDisplay().equals(authorComms.get(author))){		// If a different comment is stored, only keep the longest one
                 			if (snippet.getTextDisplay().length() > authorComms.get(author).length()){
                 				authorComms.put(author, snippet.getTextDisplay());
                 			}
-                			System.out.println("New comment longer than old comment");
                 		}
                 	}
                     
@@ -231,16 +211,13 @@ public class MainWindow extends JFrame implements ActionListener{
 		                        	j++;
 	                        		CommentSnippet snip = commentReply.getSnippet();
 	                        		author = snip.getAuthorDisplayName().toLowerCase();
-	                        		if (author.toLowerCase().contains("k-ville")){
-	                            		System.out.println("Reply skipped - Author is " + author);
-	                            	}else{
+	                        		if (!author.toLowerCase().contains("k-ville")){
 	                            		if (!authorComms.keySet().contains(author)){	// Author has not made a comment yet
 	                            			authorComms.put(author, snip.getTextDisplay());
 	                            		}else if (authorComms.keySet().contains(author) && !snip.getTextDisplay().equals(authorComms.get(author))){		// If a different comment is stored, only keep the longest one
 	                            			if (snippet.getTextDisplay().length() > authorComms.get(author).length()){
 	                            				authorComms.put(author, snip.getTextDisplay());
 	                            			}
-	                            			System.out.println("New reply longer than old comment");
 	                            		}
 	                            	}
 		                        }
@@ -272,14 +249,19 @@ public class MainWindow extends JFrame implements ActionListener{
 	private void ProcessComments(ArrayList<String> comments){
 		for (int i = 0; i < comments.size(); i++){
 			String comment = comments.get(i);
-			comment = comment.substring(0, comment.length()); // Removes "?" at the end of each comment
+			comment = comment.substring(0, comment.length()); 	// Removes "?" at the end of each comment
 			String[] commentLines = comment.split("\n");
-			if (commentLines.length > 0 && commentLines[0].toLowerCase().equals("+k-ville entertainment")){
+			if (commentLines.length > 0 && commentLines[0].toLowerCase().equals("+k-ville entertainment")){	// Removes lines that are only tagging k-ville
 				System.out.println("Removing a k-ville tagged line");
 				commentLines = Arrays.copyOfRange(commentLines, 1, commentLines.length);
 			}
 			ArrayList<Integer> failedLines = ProcessComment(commentLines);	// Processes each line of the comment
-			if (failedLines.size() > 0 && comment.split("\n").length - failedLines.size() < 2){	// If all but 1 lines in the comment failed, ignores the comment
+			if (failedLines.size() > 0 && commentLines.length - failedLines.size() < 2){	// If 1 or fewer lines were successful, all lines are marked as failed, and the comment is ignored until manual addition
+				for (int j = 0; j < commentLines.length; j++){
+					if (!failedLines.contains(j)){
+						failedLines.add(j);
+					}
+				}
 				tempSongs = new ArrayList<ChartSong>();
 			}
 			CheckForDuplicates();	// Checks the list of comments for duplicates
@@ -293,6 +275,11 @@ public class MainWindow extends JFrame implements ActionListener{
 				}
 			}
 			if (failedLines.size() > 0){	// If lines failed, adds them to the list of failed parses
+				if (comment.contains("1. I – Taeyeon feat. Verbal Jint\n2. Dumb Dumb – Red Velvet")){
+					for (int k = 0; k < failedLines.size(); k++){
+						System.out.println("Error on line " + failedLines.get(k));
+					}
+				}
 				chart.AddFailedParse(comment, failedLines);
 			}
 		}
@@ -303,6 +290,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		tempSongs = new ArrayList<ChartSong>();
 		ArrayList<Integer> failedLines = new ArrayList<Integer>();
 		String[] lines = comment;
+		
 		if (lines.length < 10){			// Process improper formatting here
 			int successfulLines = 0;	// successfulLines keeps track of how many points a song will get if the number cannot be properly processed 
 			for (int j = 0; j < lines.length; j++){
@@ -337,6 +325,9 @@ public class MainWindow extends JFrame implements ActionListener{
 		}else{	// Process correct formatting (10 lines)
 			for (int j = 0; j < lines.length; j++){
 				boolean success = ProcessLine(lines[j], j, 0);
+				if (lines[0].toLowerCase().contains("taeyeon") && lines[2].toLowerCase().contains("3. mansae") && !success){
+					System.out.println("j = " + j + ", line was \"" + lines[j] + "\"");
+				}
 				if (!success){
 					failedLines.add(j);
 				}
@@ -350,12 +341,15 @@ public class MainWindow extends JFrame implements ActionListener{
 		if (line.toLowerCase().contains("k-ville entertainment") || (line.toLowerCase().contains("http") && line.toLowerCase().contains("://"))){	// Don't count this properly formatted line
 			return false;
 		}
-		String[] parts = line.split(splitters[attemptNum]);
-		String song;
-		String artist;
+		String[] parts = line.split(Pattern.quote(splitters[attemptNum]));
+		String song, artist;
 		int points;
-		//System.out.println("Processing line: \"" + line + "\"");
+		if (line.toLowerCase().contains("3. mansae")){
+			System.out.println("Processing line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
+			System.out.println("Parts length: " + parts.length);
+		}
 		if (parts.length < 2){ 			// Try to split by " ", find word combinations in an existing song name in the chart
+			//System.out.println("Processing 0- line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
 			parts = line.split(" ");
 			if (parts.length < 2){		// Failed Parse
 				return false;
@@ -383,8 +377,14 @@ public class MainWindow extends JFrame implements ActionListener{
 				}
 			}
 		}else if (parts.length == 2){	// Correct formatting
+			if (line.toLowerCase().contains("3. mansae")){
+				System.out.println("Processing correct line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
+			}
 			if (parts[0].length() < 2 || parts[1].length() < 2){
 				return false;
+			}
+			if (line.toLowerCase().contains("3. mansae")){
+				System.out.println("No length issues");
 			}
 			song = ProcessSongName(parts[0]);
 			artist = ProcessArtist(parts[1]);
@@ -392,30 +392,65 @@ public class MainWindow extends JFrame implements ActionListener{
 			tempSongs.add(new ChartSong(song, artist, points));
 			return true;
 		}else if (parts.length == 3 && attemptNum == 0){		// One too many -'s (could be band name) 1. t-ara - so crazy     1. so crazy - t-ara
-			if (RemoveAllSpaces(line.toLowerCase()).contains("twenty-three") || RemoveAllSpaces(line.toLowerCase()).contains("t-ara") || RemoveAllSpaces(line.toLowerCase()).contains("g-d") || RemoveAllSpaces(line.toLowerCase()).contains("g-dragon") || RemoveAllSpaces(line.toLowerCase()).contains("g-friend") || RemoveAllSpaces(line.toLowerCase()).contains("a-daily") || RemoveAllSpaces(line.toLowerCase()).contains("ah-choo") || RemoveAllSpaces(line.toLowerCase()).contains("pungdeng-e")){	// Special case processing
-				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
+			boolean hasHyphenString = false;
+			String matchString = "";
+			for (int i = 0; i < hyphenStrings.length; i++){
+				if (RemoveAllSpaces(line.toLowerCase()).contains(hyphenStrings[i])){
+					hasHyphenString = true;
+					matchString = hyphenStrings[i];
+					break;
+				}
+			}
+			/*if (line.toLowerCase().contains("make-up")){
+				System.out.println("Processing 3- line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
+				System.out.println("Hyphen: " + hasHyphenString);
+			}*/
+			if (hasHyphenString){	// Special case processing
+				if ((parts[0] + "-" + parts[1]).toLowerCase().contains(matchString)){
+					song = ProcessSongName(parts[0] + "-" + parts[1]);
+					artist = ProcessArtist(parts[2]);
+					points = ProcessPoints(parts[0], lineNum);
+					tempSongs.add(new ChartSong(song, artist, points));
+					return true;
+				}else if ((parts[1] + "-" + parts[2]).toLowerCase().contains(matchString)){
 					song = ProcessSongName(parts[0]);
 					artist = ProcessArtist(parts[1] + "-" + parts[2]);
-					points = ProcessPoints(parts[0], lineNum);
-					tempSongs.add(new ChartSong(song, artist, points));
-					return true;
-				}else if (parts[0].split(" ").length == 2 && parts[0].split(" ")[1].length() == 1){		// Format of "1) t-ara - so crazy"
-					song = ProcessSongName(parts[2]);
-					artist = ProcessArtist(parts[0] + "-" + parts[1]);
-					points = ProcessPoints(parts[0], lineNum);
-					tempSongs.add(new ChartSong(song, artist, points));
-					return true;
-				}else if (parts[0].length() > 0 && (parts[0].length() < 2 && Character.isDigit(parts[0].charAt(0)) || parts[0].equals("10"))){ // Format of 1- [artist] - [song]
-					song = ProcessSongName(parts[1]);
-					artist = ProcessArtist(parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
 					tempSongs.add(new ChartSong(song, artist, points));
 					return true;
 				}else{	// Failed Parse
 					return false;
 				}
+				/*
+				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
+					if (line.toLowerCase().contains("make-up")){
+						System.out.println("Branch 1");
+					}
+					song = ProcessSongName(parts[0]);
+					artist = ProcessArtist(parts[1] + "-" + parts[2]);
+					points = ProcessPoints(parts[0], lineNum);
+					tempSongs.add(new ChartSong(song, artist, points));
+					return true;
+				}else if (parts[0].split(" ").length == 2 && parts[0].split(" ")[1].length() == 1){		// Format of "1) t-ara - so crazy"
+					if (line.toLowerCase().contains("make-up")){
+						System.out.println("Branch 2");
+					}
+					song = ProcessSongName(parts[2]);
+					artist = ProcessArtist(parts[0] + "-" + parts[1]);
+					points = ProcessPoints(parts[0], lineNum);
+					tempSongs.add(new ChartSong(song, artist, points));
+					return true;
+				}*/
+				
 			}else if (IsDigits(parts[0])){	// Format of 1- song - artist
-				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
+				/*if (line.contains("VIXX")){
+					int test = ProcessPoints(parts[0], lineNum);
+					System.out.println("Parts (Pts = " + test + ", lineNum = " + lineNum + "): " + parts[0] + " // " + parts[1] + " // " + parts[2]);
+				}*/
+				if (ProcessPoints(parts[0], lineNum) - (10 - lineNum) < 5){	// If it's reasonable that they numbered their songs
+					/*if (line.contains("VIXX")){
+						System.out.println("number checks out");
+					}*/
 					song = ProcessSongName(parts[1]);
 					artist = ProcessArtist(parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
@@ -428,10 +463,18 @@ public class MainWindow extends JFrame implements ActionListener{
 				return false;	// Failed parse
 			}
 		}else if (parts.length == 4){	// 4 -'s > could be 1- song	- ar-tist
+			//System.out.println("Processing 4- line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
 			if (IsDigits(parts[0])){	// Format of 1- song artist
 				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
-					if (RemoveAllSpaces(line.toLowerCase()).contains("twenty-three") || RemoveAllSpaces(line.toLowerCase()).contains("t-ara") || RemoveAllSpaces(line.toLowerCase()).contains("g-d") || RemoveAllSpaces(line.toLowerCase()).contains("g-dragon") || RemoveAllSpaces(line.toLowerCase()).contains("ah-choo") || RemoveAllSpaces(line.toLowerCase()).contains("g-friend") || RemoveAllSpaces(line.toLowerCase()).contains("a-daily") || RemoveAllSpaces(line.toLowerCase()).contains("pungdeng-e")){	// Special case processing
-						if (parts[2].length() < 3){		// Format of "1- so crazy - t-ara"
+					boolean hasHyphenString = false;
+					for (int i = 0; i < hyphenStrings.length; i++){
+						if (RemoveAllSpaces(line.toLowerCase()).contains(hyphenStrings[i])){
+							hasHyphenString = true;
+							break;
+						}
+					}
+					if (hasHyphenString){	// Special case processing
+						if (parts[2].length() < 3 || parts[3].length() < 3){		// Format of "1- so crazy - t-ara"
 							song = ProcessSongName(parts[1]);
 							artist = ProcessArtist(parts[2] + "-" + parts[3]);
 							points = ProcessPoints(parts[0], lineNum);
@@ -547,8 +590,11 @@ public class MainWindow extends JFrame implements ActionListener{
 		if (str.length() < 1){
 			return false;
 		}
-		for (int i = 0; i < str.length(); i++){
-			if (!Character.isDigit(str.charAt(i)) && str.charAt(i) != '.'&& str.charAt(i) != ' ' && str.charAt(i) != ')'){
+		if (!Character.isDigit(str.charAt(0))){ 	// If it doesn't start with a number
+			return false;
+		}
+		for (int i = 1; i < str.length(); i++){
+			if (!Character.isDigit(str.charAt(i)) && str.charAt(i) != '.' && str.charAt(i) != ' ' && str.charAt(i) != ')'){
 				return false;
 			}
 		}

@@ -20,7 +20,6 @@ public class Chart {
 	private List<String> combinedCloseMatches;
 	private List<Integer> combinedClosePts;
 	private List<Integer> failParseLines;
-	private String savePath;
 	private final String[] SNSD_NAMES = new String[]{"girls' generation", "girls generation", "girl's generation", "gg", "snsd"};
 	
 	public Chart(){
@@ -29,16 +28,6 @@ public class Chart {
 		this.combinedCloseMatches = new List<String>();
 		this.combinedClosePts = new List<Integer>();
 		this.failParseLines = new List<Integer>();
-		this.savePath = "";
-	}
-	
-	public Chart(String save){
-		this.chartSongs = new List<ChartSong>();
-		this.failParses = new List<String>();
-		this.combinedCloseMatches = new List<String>();
-		this.combinedClosePts = new List<Integer>();
-		this.failParseLines = new List<Integer>();
-		this.savePath = save;
 	}
 	
 	public void AddValue(String song, String artist, int points){
@@ -80,9 +69,9 @@ public class Chart {
 	// Processes chart to improve and amalgamate results
 	public void ProcessChart(JFrame parent){
 		// Checks all songs for reversed values (song is artist, artist is song; if so it combines their points and removes the duplicate
-		for (int k = 0; k < 3; k++){	//Processes 3 times to be sure to catch outliers
+		for (int k = 0; k < 5; k++){	// Processes 3 times to be sure to catch outliers
 			for (int i = 0; i < this.chartSongs.getSize() - 1; i++){
-				parent.setTitle("Processing Chart... (" + (int)((float)(i + 1) / chartSongs.getSize() * 33 * (k + 1)) + "%)");
+				parent.setTitle("Processing Chart... (" + (int)((float)(i + 1) / chartSongs.getSize() * 20 * (k + 1)) + "%)");
 				for (int j = i + 1; j < this.chartSongs.getSize(); j++){
 					ChartSong s1 = this.chartSongs.GetValueAt(i);
 					ChartSong s2 = this.chartSongs.GetValueAt(j);
@@ -142,12 +131,12 @@ public class Chart {
 	}
 	
 	// Creates the three.txt files from parsed comments
-	public void CreateChart(){
+	public void CreateChart(String path){
 		this.chartSongs = this.chartSongs.QuickSort();
 		BufferedWriter bw;
 		try{
 			// Writing chart
-			bw = new BufferedWriter(new FileWriter(savePath + "/Top 50 Chart.txt"));
+			bw = new BufferedWriter(new FileWriter(path + "/Top 50 Chart.txt"));
 			for (int i = 0; i < chartSongs.getSize(); i++){
 				ChartSong tempSong = chartSongs.GetValueAt(i);
 				if (i == 50){
@@ -158,10 +147,10 @@ public class Chart {
 				bw.newLine();
 			}
 			bw.close();
-		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Top 50 Chart.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
+		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Top 50 Chart.txt\". Directory: \"" + path + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
 		try{
 			// Writing failed parses
-			bw = new BufferedWriter(new FileWriter(savePath + "/Failed Comments.txt"));
+			bw = new BufferedWriter(new FileWriter(path + "/Failed Comments.txt"));
 			for (int i = 0; i < failParses.getSize(); i++){
 				bw.write("~~~~~ Comment " + (i + 1) + "~~~~~ (Failed on line(s) marked with ***)");
 				bw.newLine();
@@ -181,10 +170,10 @@ public class Chart {
 				bw.newLine();
 			}
 			bw.close();
-		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Failed Comments.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
+		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Failed Comments.txt\". Directory: \"" + path + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
 		try{
 			// Writing combines
-			bw = new BufferedWriter(new FileWriter(savePath + "/Merged Chart Songs.txt"));
+			bw = new BufferedWriter(new FileWriter(path + "/Merged Chart Songs.txt"));
 			for (int i = 0; i < this.combinedCloseMatches.getSize(); i++){
 				bw.write("~~~~~~~ Merge " + (i / 2) + " ~~~~~~~");
 				bw.newLine();
@@ -196,7 +185,7 @@ public class Chart {
 				i++;
 			}
 			bw.close();
-		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Merged Chart Songs.txt\". Directory: \"" + savePath + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
+		}catch(IOException e){ JOptionPane.showMessageDialog(null, "Could not write the file \"Merged Chart Songs.txt\". Directory: \"" + path + "\"", "File Write Error", JOptionPane.ERROR_MESSAGE); }
 	}
 	
 	// Checks if a string is a possible GG name
@@ -238,22 +227,22 @@ public class Chart {
 	// and -1 if they cannot be combined
 	private int AreStringsConnected(String s1, String s2, String a1, String a2){
 		if (SameCoreString(s1,s2) && SameCoreString(a1,a2)){
-			System.out.println("1) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
+			//System.out.println("1) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 1;
 		}else if (SameCoreString(s1,a2) && SameCoreString(s2,a1)){
-			System.out.println("2) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
+			//System.out.println("2) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 0;
 		}else if (SameCoreString(s1,s2) && SameWithTypo(a1,a2)){
-			System.out.println("3) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
+			//System.out.println("3) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 1;
 		}else if (SameCoreString(s1,a2) && SameWithTypo(s2,a1)){
-			System.out.println("4) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
+			//System.out.println("4) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 0;
 		}else if (SameCoreString(a1,a2) && SameWithTypo(s1,s2)){
-			System.out.println("5) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
+			//System.out.println("5) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 1;
 		}else if (SameCoreString(s2,a1) && SameWithTypo(a2,s1)){
-			System.out.println("6) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
+			//System.out.println("6) " + s1 + " - " + a1 + " & " + s2 + " - " + a2);
 			return 0;
 		}else{
 			return -1;
