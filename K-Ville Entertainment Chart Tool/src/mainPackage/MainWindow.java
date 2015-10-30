@@ -8,6 +8,7 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -38,6 +39,7 @@ import com.google.api.services.youtube.model.CommentThread;
 import com.google.api.services.youtube.model.CommentThreadListResponse;
 import com.google.common.collect.Lists;
 // TODO Improve failed comment parser
+// TODO DONE Fixed rare bug with indicating which comment lines failed
 // TODO DONE File now saved in working directory
 // TODO DONE Simplified UI, cut back on variables
 public class MainWindow extends JFrame implements ActionListener{
@@ -55,8 +57,8 @@ public class MainWindow extends JFrame implements ActionListener{
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
 	private final String VERSION_NUMBER = "1.2";
-	private final String[] splitters = new String[]{"-","–","by","/","~","|","--"};
-	private final String[] hyphenStrings = new String[]{"make-up","twenty-three","t-ara","g-d","g-dragon","g-friend","a-daily","ah-choo","pungdeng-e"};
+	private final String[] splitters = new String[]{"-","–","by","/","~","|","--","="};
+	private final String[] hyphenStrings = new String[]{"ah-choo","a-choo","click-b","ooh-aah","ooh-ahh","ohh-ahh","ohh-aah","make-up","twenty-three","t-ara","g-d","g-dragon","g-friend","a-daily","ah-choo","pungdeng-e"};
 	private String artistChars = ";,?";
 	private String songChars = "-1023456789.);?,";
 	private JMenuBar menuBar = new JMenuBar();
@@ -103,8 +105,8 @@ public class MainWindow extends JFrame implements ActionListener{
         this.setLocationRelativeTo(null);
         this.setVisible(true);
         
-        Updater update = new Updater("K-Ville Entertainment Chart Tool", this.VERSION_NUMBER);
-		update.CheckVersion();
+        //Updater update = new Updater("K-Ville Entertainment Chart Tool", this.VERSION_NUMBER);
+		//update.CheckVersion();
 	}
 	
 	// Action Listeners
@@ -188,9 +190,6 @@ public class MainWindow extends JFrame implements ActionListener{
                 	// Adding the main comment to the list
                 	CommentSnippet snippet = videoComment.getSnippet().getTopLevelComment().getSnippet();
                 	String author = snippet.getAuthorDisplayName().toLowerCase(); 
-                	if (snippet.getTextDisplay().contains("1. I – Taeyeon feat. Verbal Jint\n2. Dumb Dumb – Red Velvet")){
-        				System.out.println("Author: " + author);
-        			}
                 	if (!author.toLowerCase().contains("k-ville")){
                 		if (!authorComms.keySet().contains(author)){	// Author has not made a comment yet
                 			authorComms.put(author, snippet.getTextDisplay());
@@ -249,12 +248,22 @@ public class MainWindow extends JFrame implements ActionListener{
 	private void ProcessComments(ArrayList<String> comments){
 		for (int i = 0; i < comments.size(); i++){
 			String comment = comments.get(i);
-			comment = comment.substring(0, comment.length()); 	// Removes "?" at the end of each comment
 			String[] commentLines = comment.split("\n");
-			if (commentLines.length > 0 && commentLines[0].toLowerCase().equals("+k-ville entertainment")){	// Removes lines that are only tagging k-ville
-				System.out.println("Removing a k-ville tagged line");
-				commentLines = Arrays.copyOfRange(commentLines, 1, commentLines.length);
+			
+			if (commentLines[commentLines.length-1].lastIndexOf("?") == commentLines[commentLines.length-1].length() - 2){
+				commentLines[commentLines.length-1] = commentLines[commentLines.length-1].substring(0, commentLines[commentLines.length-1].length() - 1);
 			}
+			
+			// Removing empty lines and k-ville tags from comments
+			ArrayList<String> tempLines = new ArrayList<String>();
+			Collections.addAll(tempLines, commentLines);
+			for (int j = commentLines.length - 1; j >= 0; j--){
+				if (tempLines.get(j).length() < 1 || tempLines.get(j).toLowerCase().contains("+k-ville entertainment") || (tempLines.get(j).toLowerCase().contains("http") && tempLines.get(j).toLowerCase().contains("://"))){	// Problem line
+					tempLines.remove(j);
+				}
+			}
+			commentLines = tempLines.toArray(new String[tempLines.size()]);
+			
 			ArrayList<Integer> failedLines = ProcessComment(commentLines);	// Processes each line of the comment
 			if (failedLines.size() > 0 && commentLines.length - failedLines.size() < 2){	// If 1 or fewer lines were successful, all lines are marked as failed, and the comment is ignored until manual addition
 				for (int j = 0; j < commentLines.length; j++){
@@ -262,6 +271,7 @@ public class MainWindow extends JFrame implements ActionListener{
 						failedLines.add(j);
 					}
 				}
+				Collections.sort(failedLines);
 				tempSongs = new ArrayList<ChartSong>();
 			}
 			CheckForDuplicates();	// Checks the list of comments for duplicates
@@ -275,12 +285,7 @@ public class MainWindow extends JFrame implements ActionListener{
 				}
 			}
 			if (failedLines.size() > 0){	// If lines failed, adds them to the list of failed parses
-				if (comment.contains("1. I – Taeyeon feat. Verbal Jint\n2. Dumb Dumb – Red Velvet")){
-					for (int k = 0; k < failedLines.size(); k++){
-						System.out.println("Error on line " + failedLines.get(k));
-					}
-				}
-				chart.AddFailedParse(comment, failedLines);
+				chart.AddFailedParse(commentLines, failedLines);
 			}
 		}
 	}
@@ -290,7 +295,6 @@ public class MainWindow extends JFrame implements ActionListener{
 		tempSongs = new ArrayList<ChartSong>();
 		ArrayList<Integer> failedLines = new ArrayList<Integer>();
 		String[] lines = comment;
-		
 		if (lines.length < 10){			// Process improper formatting here
 			int successfulLines = 0;	// successfulLines keeps track of how many points a song will get if the number cannot be properly processed 
 			for (int j = 0; j < lines.length; j++){
@@ -309,7 +313,7 @@ public class MainWindow extends JFrame implements ActionListener{
 			}
 			ArrayList<Integer> lastTen = ProcessComment(Arrays.copyOfRange(lines, lines.length - 10, lines.length));	// Tries processing the last 10 lines
 			if (lastTen.size() == 0){
-				return firstTen;
+				return lastTen;
 			}else{
 				int successfulLines = 0;	// successfulLines keeps track of how many points a song will get if the number cannot be properly processed 
 				for (int j = 0; j < lines.length; j++){
@@ -325,9 +329,6 @@ public class MainWindow extends JFrame implements ActionListener{
 		}else{	// Process correct formatting (10 lines)
 			for (int j = 0; j < lines.length; j++){
 				boolean success = ProcessLine(lines[j], j, 0);
-				if (lines[0].toLowerCase().contains("taeyeon") && lines[2].toLowerCase().contains("3. mansae") && !success){
-					System.out.println("j = " + j + ", line was \"" + lines[j] + "\"");
-				}
 				if (!success){
 					failedLines.add(j);
 				}
@@ -344,27 +345,31 @@ public class MainWindow extends JFrame implements ActionListener{
 		String[] parts = line.split(Pattern.quote(splitters[attemptNum]));
 		String song, artist;
 		int points;
-		if (line.toLowerCase().contains("3. mansae")){
-			System.out.println("Processing line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
-			System.out.println("Parts length: " + parts.length);
-		}
 		if (parts.length < 2){ 			// Try to split by " ", find word combinations in an existing song name in the chart
-			//System.out.println("Processing 0- line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
 			parts = line.split(" ");
 			if (parts.length < 2){		// Failed Parse
-				return false;
+				if (attemptNum + 1 < splitters.length){
+					return ProcessLine(line, lineNum, ++attemptNum);
+				}else{
+					return false;
+				}
+				
 			}else{		// Potentially correct, must determine if there is a number in front -> try to find word in chart
 				// Format of "1. song artist" or "1 song artist" or "song artist"
-				points = ProcessPoints(parts[0], lineNum);
-				String tempCheck = parts[1];
-				for (int i = 1; i < parts.length - 1; i++){		// Looping through words to search in chart if they exist already
-					if (i > 1){
-						tempCheck += (" " + parts[i]);
+				points = ProcessPoints(line, lineNum);
+				String tempCheck = ProcessSongName(parts[0]);
+				for (int i = 0; i < parts.length - 1; i++){		// Looping through words to search in chart if they exist already
+					if (i > 0){
+						if (tempCheck.length() < 1){
+							tempCheck += (parts[i]);
+						}else{
+							tempCheck += (" " + parts[i]);	
+						}
 					}
 					for (int j = 0; j < chart.getChartSongs().getSize(); j++){
-						if (tempCheck.toLowerCase().equals(chart.getChartSongs().GetValueAt(j).getSongName())){	// If the song matches a chart song
+						if ((tempCheck.length() > 0 && chart.getChartSongs().GetValueAt(j).getSongName().equals(tempCheck)) || (tempCheck.length() > 0 && chart.getChartSongs().GetValueAt(j).getArtistName().equals(tempCheck))){	// If the song matches a chart song
 							song = tempCheck;
-							artist = CombineRestOfParts(parts, i);
+							artist = CombineRestOfParts(parts, i + 1);
 							tempSongs.add(new ChartSong(song, artist, points));
 							return true;
 						}
@@ -377,14 +382,13 @@ public class MainWindow extends JFrame implements ActionListener{
 				}
 			}
 		}else if (parts.length == 2){	// Correct formatting
-			if (line.toLowerCase().contains("3. mansae")){
-				System.out.println("Processing correct line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
+			if (line.contains("5.Cinderella/CNBlue")){
+				System.out.println("Length 2 with " + splitters[attemptNum] + ": " + line);
 			}
-			if (parts[0].length() < 2 || parts[1].length() < 2){
-				return false;
-			}
-			if (line.toLowerCase().contains("3. mansae")){
-				System.out.println("No length issues");
+			if ((parts[0].length() < 2 && !parts[0].toLowerCase().equals("i")) || (parts[1].length() < 2 && !parts[1].toLowerCase().equals("i"))){
+				if (parts[0].length() < 2){
+					return ProcessLine(parts[1], lineNum, ++attemptNum);
+				}
 			}
 			song = ProcessSongName(parts[0]);
 			artist = ProcessArtist(parts[1]);
@@ -401,18 +405,17 @@ public class MainWindow extends JFrame implements ActionListener{
 					break;
 				}
 			}
-			/*if (line.toLowerCase().contains("make-up")){
-				System.out.println("Processing 3- line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
-				System.out.println("Hyphen: " + hasHyphenString);
-			}*/
+			if (line.toLowerCase().contains("4. twenty -three")){
+				System.out.println("hyphen - " + hasHyphenString);
+			}
 			if (hasHyphenString){	// Special case processing
-				if ((parts[0] + "-" + parts[1]).toLowerCase().contains(matchString)){
+				if ((RemoveAllSpaces(parts[0]) + "-" + RemoveAllSpaces(parts[1])).toLowerCase().contains(matchString)){
 					song = ProcessSongName(parts[0] + "-" + parts[1]);
 					artist = ProcessArtist(parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
 					tempSongs.add(new ChartSong(song, artist, points));
 					return true;
-				}else if ((parts[1] + "-" + parts[2]).toLowerCase().contains(matchString)){
+				}else if ((RemoveAllSpaces(parts[1]) + "-" + RemoveAllSpaces(parts[2])).toLowerCase().contains(matchString)){
 					song = ProcessSongName(parts[0]);
 					artist = ProcessArtist(parts[1] + "-" + parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
@@ -420,37 +423,9 @@ public class MainWindow extends JFrame implements ActionListener{
 					return true;
 				}else{	// Failed Parse
 					return false;
-				}
-				/*
-				if (parts[1].length() < 3){	// Format of "1. so crazy - t-ara"
-					if (line.toLowerCase().contains("make-up")){
-						System.out.println("Branch 1");
-					}
-					song = ProcessSongName(parts[0]);
-					artist = ProcessArtist(parts[1] + "-" + parts[2]);
-					points = ProcessPoints(parts[0], lineNum);
-					tempSongs.add(new ChartSong(song, artist, points));
-					return true;
-				}else if (parts[0].split(" ").length == 2 && parts[0].split(" ")[1].length() == 1){		// Format of "1) t-ara - so crazy"
-					if (line.toLowerCase().contains("make-up")){
-						System.out.println("Branch 2");
-					}
-					song = ProcessSongName(parts[2]);
-					artist = ProcessArtist(parts[0] + "-" + parts[1]);
-					points = ProcessPoints(parts[0], lineNum);
-					tempSongs.add(new ChartSong(song, artist, points));
-					return true;
-				}*/
-				
+				}				
 			}else if (IsDigits(parts[0])){	// Format of 1- song - artist
-				/*if (line.contains("VIXX")){
-					int test = ProcessPoints(parts[0], lineNum);
-					System.out.println("Parts (Pts = " + test + ", lineNum = " + lineNum + "): " + parts[0] + " // " + parts[1] + " // " + parts[2]);
-				}*/
 				if (ProcessPoints(parts[0], lineNum) - (10 - lineNum) < 5){	// If it's reasonable that they numbered their songs
-					/*if (line.contains("VIXX")){
-						System.out.println("number checks out");
-					}*/
 					song = ProcessSongName(parts[1]);
 					artist = ProcessArtist(parts[2]);
 					points = ProcessPoints(parts[0], lineNum);
@@ -463,26 +438,27 @@ public class MainWindow extends JFrame implements ActionListener{
 				return false;	// Failed parse
 			}
 		}else if (parts.length == 4){	// 4 -'s > could be 1- song	- ar-tist
-			//System.out.println("Processing 4- line with splitter " + splitters[attemptNum] + " : \"" + line + "\"");
 			if (IsDigits(parts[0])){	// Format of 1- song artist
 				if (ProcessPoints(parts[0], lineNum) - lineNum < 5){	// If it's reasonable that they numbered their songs
 					boolean hasHyphenString = false;
+					String matchString = "";
 					for (int i = 0; i < hyphenStrings.length; i++){
 						if (RemoveAllSpaces(line.toLowerCase()).contains(hyphenStrings[i])){
 							hasHyphenString = true;
+							matchString = hyphenStrings[i];
 							break;
 						}
 					}
-					if (hasHyphenString){	// Special case processing
-						if (parts[2].length() < 3 || parts[3].length() < 3){		// Format of "1- so crazy - t-ara"
-							song = ProcessSongName(parts[1]);
-							artist = ProcessArtist(parts[2] + "-" + parts[3]);
+					if (hasHyphenString){
+						if ((RemoveAllSpaces(parts[1]) + "-" + RemoveAllSpaces(parts[2])).toLowerCase().contains(matchString)){
+							song = ProcessSongName(parts[1] + "-" + parts[2]);
+							artist = ProcessArtist(parts[3]);
 							points = ProcessPoints(parts[0], lineNum);
 							tempSongs.add(new ChartSong(song, artist, points));
 							return true;
-						}else if (parts[1].length() < 3){		// Format of "1- t-ara - so crazy"
-							song = ProcessSongName(parts[3]);
-							artist = ProcessArtist(parts[1] + "-" + parts[2]);
+						}else if ((RemoveAllSpaces(parts[2]) + "-" + RemoveAllSpaces(parts[3])).toLowerCase().contains(matchString)){
+							song = ProcessSongName(parts[1]);
+							artist = ProcessArtist(parts[2] + "-" + parts[3]);
 							points = ProcessPoints(parts[0], lineNum);
 							tempSongs.add(new ChartSong(song, artist, points));
 							return true;
@@ -501,11 +477,13 @@ public class MainWindow extends JFrame implements ActionListener{
 	// Processes a song name
 	private String ProcessSongName(String song){
 		String tempSong = RemoveSpaces(song);
-		while (songChars.contains(tempSong.substring(0,1))){	// removes numbers and spaces at the beginning of the name
+		while (song.length() > 0 && songChars.contains(tempSong.substring(0,1))){	// removes numbers and spaces at the beginning of the name
 			if (tempSong.length() > 1 && Character.isDigit(tempSong.charAt(0)) && Character.isLetter(tempSong.charAt(1))){	// Saves band names like 4Minute
 				break;
 			}else if (tempSong.length() > 1){
 				tempSong = tempSong.substring(1, tempSong.length());
+			}else if (tempSong.length() > 0 && songChars.contains(tempSong)){
+				return "";
 			}else{
 				return tempSong.toLowerCase();
 			}
@@ -538,7 +516,6 @@ public class MainWindow extends JFrame implements ActionListener{
 				counter++;
 			}
 			int points = Integer.parseInt(song.substring(0, lastNumIndex + 1));
-			//System.out.println("Song earned: " + (11 - points) + " points");
 			return 11 - points; 
 		}else{		// Numbers not included, just a list of songs and artists
 			return 10 - line;
@@ -607,7 +584,11 @@ public class MainWindow extends JFrame implements ActionListener{
 		for (int i = index + 1; i < parts.length; i++){
 			tempString += (parts[i] + " ");
 		}
-		return tempString.substring(0, tempString.length() - 1);
+		if (tempString.length() > 0){
+			return tempString.substring(0, tempString.length() - 1);
+		}else{
+			return tempString;
+		}
 	}
 
 	// Program starts here

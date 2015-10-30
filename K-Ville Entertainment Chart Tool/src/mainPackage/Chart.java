@@ -20,7 +20,7 @@ public class Chart {
 	private List<String> combinedCloseMatches;
 	private List<Integer> combinedClosePts;
 	private List<Integer> failParseLines;
-	private final String[] SNSD_NAMES = new String[]{"girls' generation", "girls generation", "girl's generation", "gg", "snsd"};
+	private final String[] SNSD_NAMES = new String[]{"girls' generation", "girls generation", "girl's generation", "snsd"};
 	
 	public Chart(){
 		this.chartSongs = new List<ChartSong>();
@@ -57,13 +57,21 @@ public class Chart {
 	}
 	
 	// Splits comments by -2 to know when the comments end
-	public void AddFailedParse(String comment, ArrayList<Integer> line){
-		String tempComment = comment.substring(0, comment.length() - 1);
-		failParses.Push(tempComment);
+	public void AddFailedParse(String[] comment, ArrayList<Integer> line){
+		String tempString = "";
+		for (int i = 0; i < comment.length - 1; i++){
+			tempString += (comment[i] + "\n");
+		}
+		tempString += comment[comment.length - 1];
+		if (tempString.substring(tempString.length() - 1).equals("?")){
+			failParses.Push(tempString.substring(0, tempString.length() - 1));
+		}else{
+			failParses.Push(tempString);
+		}
 		for (int i = 0; i < line.size(); i++){
 			failParseLines.Push(line.get(i));
 		}
-		failParseLines.Push(-2);
+		failParseLines.Push(-114);
 	}
 	
 	// Processes chart to improve and amalgamate results
@@ -164,7 +172,7 @@ public class Chart {
 					}
 					bw.newLine();
 				}
-				if (failParseLines.GetValueAt(0) == -2){	// Preparing for the next comment's failed lines
+				if (failParseLines.GetValueAt(0) == -114){	// Preparing for the next comment's failed lines
 					failParseLines.RemoveAt(0);
 				}
 				bw.newLine();
