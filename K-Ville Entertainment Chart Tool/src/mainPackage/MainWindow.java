@@ -5,6 +5,9 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +30,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -56,15 +60,16 @@ public class MainWindow extends JFrame implements ActionListener{
 	private HashMap<String,String> authorComms = new HashMap<String,String>();
 	private ArrayList<String> commentList;
 	private ArrayList<ChartSong> tempSongs = new ArrayList<ChartSong>();
-	private final String VERSION_NUMBER = "1.2";
+	private final String VERSION_NUMBER = "1.3";
 	private final String[] splitters = new String[]{"-","–","by","/","~","|","--","="};
 	private final String[] hyphenStrings = new String[]{"ah-choo","a-choo","click-b","ooh-aah","ooh-ahh","ohh-ahh","ohh-aah","make-up","twenty-three","t-ara","g-d","g-dragon","g-friend","a-daily","ah-choo","pungdeng-e"};
 	private String artistChars = ";,?";
 	private String songChars = "-1023456789.);?,";
 	private JMenuBar menuBar = new JMenuBar();
 	private JMenu fileMenu = new JMenu("File");
-	private JMenuItem updateChartFile = new JMenuItem("Update Top 50 Chart");
-	private JMenuItem updateProgram = new JMenuItem("Check for Updates");
+	private JMenuItem updateChartFile = new JMenuItem("Update Top 50 Chart File");
+	private JMenuItem processVotes = new JMenuItem("Process Staff Votes");
+	private ArrayList<Tie> ties = new ArrayList<Tie>();
 	
 	// Window Creation
 	public MainWindow(){
@@ -73,9 +78,9 @@ public class MainWindow extends JFrame implements ActionListener{
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e3) { e3.printStackTrace();	}
 		
 		updateChartFile.addActionListener(this);
-		updateProgram.addActionListener(this);
+		processVotes.addActionListener(this);
 		fileMenu.add(updateChartFile);
-		fileMenu.add(updateProgram);
+		fileMenu.add(processVotes);
 		menuBar.add(fileMenu);
 		menuBar.setBorder(BorderFactory.createMatteBorder(0,0,1,0,Color.GRAY));
 		
@@ -104,9 +109,6 @@ public class MainWindow extends JFrame implements ActionListener{
         this.setSize(390,152);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
-        
-        //Updater update = new Updater("K-Ville Entertainment Chart Tool", this.VERSION_NUMBER);
-		//update.CheckVersion();
 	}
 	
 	// Action Listeners
@@ -130,9 +132,202 @@ public class MainWindow extends JFrame implements ActionListener{
 	            chart.UpdateChartFile(tempPath);
 	            JOptionPane.showMessageDialog(this, "Updated Top 50 Chart!", "Updated Chart", JOptionPane.INFORMATION_MESSAGE);
 	        }
-		}else if (e.getSource() == updateProgram){
-			Updater update = new Updater("K-Ville Entertainment Chart Tool", this.VERSION_NUMBER);
-			update.CheckVersion();
+		}else if (e.getSource() == processVotes){
+			JFileChooser opener = new JFileChooser();
+			opener.setMultiSelectionEnabled(true);
+			opener.addChoosableFileFilter(new FileNameExtensionFilter("Text Files",".txt"));
+	        int ret = opener.showDialog(this, "Choose Staff Vote Files");
+	        if(ret == JFileChooser.APPROVE_OPTION){   
+	        	File[] chosenFiles = opener.getSelectedFiles();
+	        	StaffVote[] allVotes = new StaffVote[chosenFiles.length];
+	        	for (int i = 0; i < chosenFiles.length; i++){	// Processes individual lists
+	            	allVotes[i] = new StaffVote();
+	            	allVotes[i].ProcessVote(chosenFiles[i]);
+	            }
+	            
+	        	// Combine list into overall list of points
+	        	StaffVote[] allVoteCopy = new StaffVote[allVotes.length];
+	        	for (int i = 0; i < allVotes.length; i++){
+	        		SongVote[] tempVotes = new SongVote[allVotes[i].getSongVotes().length];
+	        		for (int j = 0; j < allVotes[i].getSongVotes().length; j++){
+	        			tempVotes[j] = new SongVote(allVotes[i].getSongVotes()[j]);
+	        		}
+	        		allVoteCopy[i] = new StaffVote(tempVotes); 
+	        	}
+	        	ArrayList<SongVote> combinedVotes = CombineLists(allVoteCopy);
+        		
+	        	// Detect and attempt to break ties, save output
+	        	BreakTies(combinedVotes, allVotes);
+	        	
+	            JOptionPane.showMessageDialog(this, "Process staff votes!", "Processed Vote", JOptionPane.INFORMATION_MESSAGE);
+	        }
+		}
+	}
+	
+	// Combines the individual staff lists into a sorted, cut off list ready for tiebreaker analysis
+	private ArrayList<SongVote> CombineLists(StaffVote[] sVotes){
+		ArrayList<SongVote> combined = new ArrayList<SongVote>();
+		for (int i = 0; i < sVotes.length; i++){	// Process each staff vote
+			StaffVote curStaffVote = sVotes[i];
+			for (int j = 0; j < curStaffVote.getSongVotes().length; j++){	// Process each song vote
+				SongVote curVote = curStaffVote.getSongVotes()[j];
+				boolean alreadyIn = false;
+				int existingInd = 0;
+				for (int k = 0; k < combined.size(); k++){	// Check if song is already in the list
+					if (combined.get(k).isEqual(curVote)){ // Need to add points
+						alreadyIn = true;
+						existingInd = k;
+					}
+				}
+				if (alreadyIn){ // Need to add points
+					combined.get(existingInd).setPoints(combined.get(existingInd).getPoints() + curVote.getPoints());
+				}else{	// Add the song to the arraylist
+					combined.add(curVote);
+				}
+			}
+		}
+		
+		// Sorting and keeping only the necessary (top 25 + extending tiebreak songs)
+		Collections.sort(combined);
+		Collections.reverse(combined);
+		ArrayList<SongVote> topVotes = new ArrayList<SongVote>();
+		for (int i = 0; i < combined.size(); i++){
+			if (i > 24){	// Past 25 songs
+				if (combined.get(i).getPoints() == topVotes.get(topVotes.size() - 1).getPoints()){	// Tiebreaker continuing past 25th
+					topVotes.add(combined.get(i));
+				}else{
+					break;
+				}
+			}else{
+				topVotes.add(combined.get(i));
+			}
+		}
+		return topVotes;
+	}
+	
+	// Detects any ties and tries to break them. Creates a file for the list
+	// and a file of conflicts needing to be resolved
+	private void BreakTies(ArrayList<SongVote> topList, StaffVote[] allVotes){
+		ArrayList<SongVote> fixedVotes = new ArrayList<SongVote>();
+		for (int i = 0; i < topList.size(); i++){
+			if (i + 1 < topList.size() && topList.get(i).getPoints() == topList.get(i + 1).getPoints()){	// Tie
+				int numSongsTied = 2;
+				while (i + numSongsTied < topList.size() && topList.get(i + numSongsTied - 1).getPoints() == topList.get(i + numSongsTied).getPoints()){
+					numSongsTied++;
+				}
+				ArrayList<SongVote> tempList = new ArrayList<SongVote>();
+				for (int j = 0; j < numSongsTied; j++){		// Create list of tied songs
+					tempList.add(topList.get(i + j));
+				}
+				
+				// Process and add songs to fixedVotes
+				tempList = ProcessTie(tempList, allVotes);
+				fixedVotes.addAll(tempList);
+				i += (numSongsTied - 1);
+			}else{
+				fixedVotes.add(topList.get(i));
+			}
+		}
+		try{
+			// Save top 25 list in a file
+			BufferedWriter bw = new BufferedWriter(new FileWriter(System.getProperty("user.dir") + "/Top 25 Chart.txt"));
+			for (int i = 0; i < fixedVotes.size(); i++){
+				//if (i < 25){
+					bw.write((i + 1) + ". (" + fixedVotes.get(i).getPoints() + " points) " + fixedVotes.get(i).getArtist() + " - " + fixedVotes.get(i).getSong());
+					bw.newLine();
+				//}
+			}
+			bw.close();
+			
+			// Save unresolved ties in a file
+			if (ties.size() > 0){
+				bw = new BufferedWriter(new FileWriter(System.getProperty("user.dir") + "/Unresolved Ties.txt"));
+				for (int i = 0; i < ties.size(); i++){
+					Tie curTie = ties.get(i);
+					bw.write("~~~~~ Tie at " + curTie.getPoints() + " points ~~~~~\n");
+					for (int j = 0; j < curTie.getArtists().size(); j++){
+						bw.write(curTie.getArtists().get(j) + " - " + curTie.getSongs().get(j) + "\n");
+					}
+					bw.newLine();
+				}
+				bw.close();
+			}
+		}catch (IOException e){ e.printStackTrace(); }		
+	}
+	
+	// Processes a tie if possible. If processed, reorders the songs according
+	// to unique votes and returns a sorted array. If not, returns the original
+	// array and adds a new tie to the tiebreaker
+	private ArrayList<SongVote> ProcessTie(ArrayList<SongVote> tiedSongs, StaffVote[] allVotes){
+		int benVoteIndex = 0;
+		int[] votes = new int[tiedSongs.size()];
+		int numVotesCast = 0;
+		
+		// Simulates a vote from each staff by checking the relative rating of the songs involved
+		for (int i = 0; i < allVotes.length; i++){
+			int maxIndex = 0, maxValue = 0;
+			for (int j = 0; j < tiedSongs.size(); j++){
+				int tempPts = allVotes[i].getVotePoints(tiedSongs.get(j).getArtist(), tiedSongs.get(j).getSong());
+				if (tempPts > maxValue){
+					maxIndex = j;
+					maxValue = tempPts;
+				}
+			}
+			if (allVotes[i].getStaffName().contains("ben")){
+				benVoteIndex = maxIndex;
+			}
+			if (maxValue > 0){
+				votes[maxIndex]++;
+				numVotesCast++;
+			}
+		}
+		
+		// Check if there is a unique max. If so, add that + addAll(processties(smaller amount))
+		int maxInd = 0, max = 0, numMaxes = 0;
+		for (int i = 0; i < votes.length; i++){
+			if (votes[i] > max){
+				maxInd = i;
+				max = votes[i];
+				numMaxes = 1;
+			}else if (votes[i] == max){
+				numMaxes++;
+			}
+		}
+		
+		if (numMaxes == 1 && (max > Math.floor(allVotes.length / (double)2) || numVotesCast == allVotes.length)){		// Tie successfully broken
+			ArrayList<SongVote> newTiedSongs = tiedSongs;
+			ArrayList<SongVote> sortVotes = new ArrayList<SongVote>();
+			sortVotes.add(tiedSongs.get(maxInd));
+			newTiedSongs.remove(maxInd);
+			if (tiedSongs.size() > 2){
+				sortVotes.addAll(ProcessTie(newTiedSongs, allVotes));
+				return sortVotes;
+			}else{
+				sortVotes.addAll(newTiedSongs);
+				return sortVotes;
+			}
+		}else if (votes[benVoteIndex] == max && (max >= Math.floor(allVotes.length / (double)2) || numVotesCast == allVotes.length)){	// Ben has a vote tied for first, so that song wins
+			ArrayList<SongVote> newTiedSongs = tiedSongs;
+			ArrayList<SongVote> sortVotes = new ArrayList<SongVote>();
+			sortVotes.add(tiedSongs.get(benVoteIndex));
+			newTiedSongs.remove(benVoteIndex);
+			if (tiedSongs.size() > 2){
+				sortVotes.addAll(ProcessTie(newTiedSongs, allVotes));
+				return sortVotes;
+			}else{
+				sortVotes.addAll(newTiedSongs);
+				return sortVotes;
+			}
+		}else{	// if unresolved, add info about tiebreak (points, which songs)
+			ArrayList<String> tSongs = new ArrayList<String>();
+			ArrayList<String> tArtists = new ArrayList<String>();
+			for (int i = 0; i < tiedSongs.size(); i++){
+				tSongs.add(tiedSongs.get(i).getSong());
+				tArtists.add(tiedSongs.get(i).getArtist());
+			}
+			int pts = tiedSongs.get(0).getPoints();
+			ties.add(new Tie(tSongs, tArtists, pts));
+			return tiedSongs;
 		}
 	}
 	
@@ -307,25 +502,25 @@ public class MainWindow extends JFrame implements ActionListener{
 			}
 			return failedLines;
 		}else if (lines.length > 10){	// The comment has too many lines
-			ArrayList<Integer> firstTen = ProcessComment(Arrays.copyOfRange(lines, 0, 10)); 	// Tries processing the first 10 lines
-			if (firstTen.size() == 0){
-				return firstTen;
-			}
-			ArrayList<Integer> lastTen = ProcessComment(Arrays.copyOfRange(lines, lines.length - 10, lines.length));	// Tries processing the last 10 lines
-			if (lastTen.size() == 0){
-				return lastTen;
-			}else{
-				int successfulLines = 0;	// successfulLines keeps track of how many points a song will get if the number cannot be properly processed 
-				for (int j = 0; j < lines.length; j++){
-					boolean success = ProcessLine(lines[j], successfulLines, 0);
-					if (!success){
-						failedLines.add(j);
-					}else{
-						successfulLines++;
-					}
+			
+			for (int k = 0; k <= lines.length - 10; k++){  // Tries processing every sequence of 10 lines in the comment
+				ArrayList<Integer> currentTen = ProcessComment(Arrays.copyOfRange(lines, k, k + 10)); 	
+				if (currentTen.size() == 0){	// If any sequence of 10 lines worked perfectly, return it
+					return currentTen;
 				}
-				return failedLines;
 			}
+			
+			int successfulLines = 0;	// successfulLines keeps track of how many points a song will get if the number cannot be properly processed 
+			for (int j = 0; j < lines.length; j++){
+				boolean success = ProcessLine(lines[j], successfulLines, 0);
+				if (!success){
+					failedLines.add(j);
+				}else{
+					successfulLines++;
+				}
+			}
+			return failedLines;
+			//}
 		}else{	// Process correct formatting (10 lines)
 			for (int j = 0; j < lines.length; j++){
 				boolean success = ProcessLine(lines[j], j, 0);
@@ -382,9 +577,6 @@ public class MainWindow extends JFrame implements ActionListener{
 				}
 			}
 		}else if (parts.length == 2){	// Correct formatting
-			if (line.contains("5.Cinderella/CNBlue")){
-				System.out.println("Length 2 with " + splitters[attemptNum] + ": " + line);
-			}
 			if ((parts[0].length() < 2 && !parts[0].toLowerCase().equals("i")) || (parts[1].length() < 2 && !parts[1].toLowerCase().equals("i"))){
 				if (parts[0].length() < 2){
 					return ProcessLine(parts[1], lineNum, ++attemptNum);
@@ -404,9 +596,6 @@ public class MainWindow extends JFrame implements ActionListener{
 					matchString = hyphenStrings[i];
 					break;
 				}
-			}
-			if (line.toLowerCase().contains("4. twenty -three")){
-				System.out.println("hyphen - " + hasHyphenString);
 			}
 			if (hasHyphenString){	// Special case processing
 				if ((RemoveAllSpaces(parts[0]) + "-" + RemoveAllSpaces(parts[1])).toLowerCase().contains(matchString)){
